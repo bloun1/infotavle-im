@@ -1,0 +1,170 @@
+{
+    "uke2": {
+        "dato": "05.01-09.01",
+        "1IM1": "Teo",
+        "1IM2": "Olha",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke3": {
+        "dato": "12.01-16.01",
+        "1IM1": "Iben",
+        "1IM2": "Fredrika",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke4": {
+        "dato": "19.01-23.01",
+        "1IM1": "Kjell",
+        "1IM2": "Nicholas",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke5": {
+        "dato": "26.01-30.01",
+        "1IM1": "Joar",
+        "1IM2": "Oliver",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke6": {
+        "dato": "02.02-06.02",
+        "1IM1": "Kamil",
+        "1IM2": "Kevin",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke7": {
+        "dato": "09.02-13.02",
+        "1IM1": "Noah",
+        "1IM2": "Emmanuel",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke8": {
+        "dato": "Vinterferie",
+        "1IM1": "",
+        "1IM2": "",
+        "stoler": "",
+        "vasking": ""
+    },
+    "uke9": {
+        "dato": "23.02-27.02",
+        "1IM1": "Thea",
+        "1IM2": "Christoffer",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke10": {
+        "dato": "Utplassering",
+        "1IM1": "",
+        "1IM2": "",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke11": {
+        "dato": "09.03-13.03",
+        "1IM1": "Roman",
+        "1IM2": "Lilly",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke12": {
+        "dato": "16.03-20.03",
+        "1IM1": "Kristian",
+        "1IM2": "Leander",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke13": {
+        "dato": "23.03-27.03",
+        "1IM1": "Lasse",
+        "1IM2": "Ivan",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke15": {
+        "dato": "06.04-10.04",
+        "1IM1": "Jørgen",
+        "1IM2": "Maia",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke16": {
+        "dato": "13.04-17.04",
+        "1IM1": "Dominika",
+        "1IM2": "Rune",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke17": {
+        "dato": "20.04-24.04",
+        "1IM1": "Teo",
+        "1IM2": "Syvert",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke18": {
+        "dato": "27.04-01.05",
+        "1IM1": "Iben",
+        "1IM2": "Fayez",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke19": {
+        "dato": "04.05-08.05",
+        "1IM1": "Kjell F",
+        "1IM2": "Volodymyr",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke20": {
+        "dato": "11.05-15.05",
+        "1IM1": "Joar",
+        "1IM2": "Olha",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke21": {
+        "dato": "18.05-22.05",
+        "1IM1": "Kamil",
+        "1IM2": "Fredrika",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke22": {
+        "dato": "25.05-29.05",
+        "1IM1": "Noah",
+        "1IM2": "Nicholas",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke23": {
+        "dato": "01.06-05.06",
+        "1IM1": "Thea",
+        "1IM2": "Oliver",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke24": {
+        "dato": "08.06-12.06",
+        "1IM1": "Roman",
+        "1IM2": "Kevin",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    },
+    "uke25": {
+        "dato": "15.06-19.06",
+        "1IM1": "Kristian",
+        "1IM2": "Emmanuel",
+        "stoler": "Opp",
+        "vasking": "Ja"
+    },
+    "uke26": {
+        "dato": "22.06-23.06",
+        "1IM1": "Lasse",
+        "1IM2": "Christoffer",
+        "stoler": "Opp",
+        "vasking": "Nei"
+    }
+}
