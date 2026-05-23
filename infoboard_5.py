@@ -23,12 +23,33 @@ MAX_PER_DEST = 5
 REFRESH_API_SEC = 60
 REFRESH_ORDEN_MIN = 5
 
-# === Colors ===
-BG_COLOR = '#0b0f14'
-NEON_YELLOW = '#FFC700'
-NEON_BLUE = '#00ADEF'
-TEXT_COLOR = '#E6F0FF'
-SUBTEXT_COLOR = '#A8C0D8'
+# === Charlottenlund vgs Visual Profile Colors ===
+# PMS 2627 — main background (purple)
+BG_COLOR = '#3C1053'
+# Secondary background — slightly lighter purple for cards/sections
+BG_SECONDARY = '#4A1366'
+# PMS 108 — headings (yellow)
+HEADING_COLOR = '#FFD244'
+# PMS 7473 — accent/line numbers (teal-green from logo)
+ACCENT_COLOR = '#00816D'
+# PMS 568 — secondary accent (darker teal from logo)
+ACCENT_DARK = '#006C5B'
+# Body text — white
+TEXT_COLOR = '#FFFFFF'
+# Subtle text — muted lavender
+SUBTEXT_COLOR = '#B89CC8'
+# PMS 021 — alert/offline indicator (orange)
+ALERT_COLOR = '#EA560D'
+
+# === Fonts (Charlottenlund profile: Arial as substitute for Proxima Nova Alt) ===
+FONT_HEADING = ('Arial', 40, 'bold')
+FONT_SUBHEADING = ('Arial', 28, 'bold')
+FONT_BODY = ('Arial', 24)
+FONT_BODY_SMALL = ('Arial', 13)
+FONT_TABLE_HEADER = ('Arial', 16, 'bold')
+FONT_TITLE = ('Arial', 40, 'bold')
+FONT_CLOCK = ('Arial', 36)
+FONT_STATUS = ('Arial', 20)
 
 # === State ===
 cached_departures = []
@@ -49,7 +70,6 @@ def fetch_orden():
 
 
 def parse_departures():
-    """Fetch and parse departures from API. Returns list or None on error."""
     global cached_departures, last_update, is_online
     try:
         response = requests.get(API_URL, headers=HEADERS, timeout=6)
@@ -87,16 +107,15 @@ def parse_departures():
             cached_departures = departures[:MAX_DEPARTURES]
             last_update = datetime.datetime.now(LOCAL_TZ)
             is_online = True
-        log(f"✅ Updated from API ({len(cached_departures)} departures)")
+        log(f"Updated from API ({len(cached_departures)} departures)")
         return True
     except Exception as e:
         is_online = False
-        log(f"⚠️ API fetch failed ({e})")
+        log(f"API fetch failed ({e})")
         return False
 
 
 def fetch_loop():
-    """Background thread: fetch API periodically."""
     while True:
         parse_departures()
         threading.Event().wait(REFRESH_API_SEC)
@@ -108,57 +127,53 @@ def format_time(dep_time):
     if delta < 0:
         return ""
     if delta == 0:
-        return "Nå"
+        return "NÅ"
     elif delta < 15:
-        return f"{delta} min"
+        return f"{delta} MIN"
     else:
         return dep_time.strftime("%H:%M")
 
 
-# === Pre-built widget rows ===
 class DepartureBoard:
-    """Departure board with pre-created widgets — only text updates, no destroy/create."""
-
     def __init__(self, parent):
         self.frame = tk.Frame(parent, bg=BG_COLOR)
 
-        # Header
-        hdr = tk.Frame(self.frame, bg=BG_COLOR)
-        hdr.pack(fill='x')
-        tk.Label(hdr, text="Linje", font=('Arial', 28, 'bold'),
-                 bg=BG_COLOR, fg=TEXT_COLOR).pack(side='left', padx=10)
-        tk.Label(hdr, text="Retning", font=('Arial', 28, 'bold'),
-                 bg=BG_COLOR, fg=TEXT_COLOR).pack(side='left', padx=20)
-        tk.Label(hdr, text="Avgang", font=('Arial', 28, 'bold'),
-                 bg=BG_COLOR, fg=TEXT_COLOR).pack(side='right', padx=20)
+        # Header row
+        hdr = tk.Frame(self.frame, bg=BG_SECONDARY)
+        hdr.pack(fill='x', ipady=8)
+        tk.Label(hdr, text="LINJE", font=FONT_SUBHEADING,
+                 bg=BG_SECONDARY, fg=HEADING_COLOR).pack(side='left', padx=15)
+        tk.Label(hdr, text="RETNING", font=FONT_SUBHEADING,
+                 bg=BG_SECONDARY, fg=HEADING_COLOR).pack(side='left', padx=20)
+        tk.Label(hdr, text="AVGANG", font=FONT_SUBHEADING,
+                 bg=BG_SECONDARY, fg=HEADING_COLOR).pack(side='right', padx=20)
 
         self.rows_frame = tk.Frame(self.frame, bg=BG_COLOR)
-        self.rows_frame.pack(fill='both', expand=True)
+        self.rows_frame.pack(fill='both', expand=True, pady=(10, 0))
 
-        # Pre-create max rows (dest header + 5 departures per dest, ~8 dests max)
         self.dest_headers = []
-        self.dep_rows = []  # list of (line_label, dest_label, time_label)
+        self.dep_rows = []
 
         for _ in range(8):
-            hdr_lbl = tk.Label(self.rows_frame, text="", font=('Arial', 26, 'bold'),
-                               bg=BG_COLOR, fg=NEON_BLUE, anchor='w')
+            hdr_lbl = tk.Label(self.rows_frame, text="", font=FONT_SUBHEADING,
+                               bg=BG_COLOR, fg=ACCENT_COLOR, anchor='w')
             self.dest_headers.append(hdr_lbl)
             group = []
             for _ in range(MAX_PER_DEST):
                 row_frame = tk.Frame(self.rows_frame, bg=BG_COLOR)
-                line_lbl = tk.Label(row_frame, text="", font=('Arial', 24, 'bold'),
-                                    bg=BG_COLOR, fg=NEON_BLUE, width=5, anchor='w')
-                dest_lbl = tk.Label(row_frame, text="", font=('Arial', 24),
+                line_lbl = tk.Label(row_frame, text="", font=('Arial', 22, 'bold'),
+                                    bg=ACCENT_COLOR, fg='#FFFFFF', width=5, anchor='center')
+                dest_lbl = tk.Label(row_frame, text="", font=FONT_BODY,
                                     bg=BG_COLOR, fg=TEXT_COLOR, anchor='w')
-                time_lbl = tk.Label(row_frame, text="", font=('Arial', 24),
-                                    bg=BG_COLOR, fg=NEON_YELLOW, anchor='e')
-                line_lbl.pack(side='left', padx=10)
+                time_lbl = tk.Label(row_frame, text="", font=('Arial', 24, 'bold'),
+                                    bg=BG_COLOR, fg=HEADING_COLOR, anchor='e')
+                line_lbl.pack(side='left', padx=(10, 5), ipady=2)
                 dest_lbl.pack(side='left', padx=20, fill='x', expand=True)
                 time_lbl.pack(side='right', padx=20)
                 group.append((row_frame, line_lbl, dest_lbl, time_lbl))
             self.dep_rows.append(group)
 
-        self.no_data_label = tk.Label(self.rows_frame, text="", font=('Arial', 24),
+        self.no_data_label = tk.Label(self.rows_frame, text="", font=FONT_BODY,
                                        bg=BG_COLOR, fg=SUBTEXT_COLOR)
 
     def pack(self, **kwargs):
@@ -168,7 +183,6 @@ class DepartureBoard:
         with departures_lock:
             deps = list(cached_departures)
 
-        # Group by destination
         grouped = defaultdict(list)
         for d in deps:
             grouped[d["destination"]].append(d)
@@ -178,9 +192,8 @@ class DepartureBoard:
         visible_rows = 0
 
         if not sorted_groups:
-            self.no_data_label.config(text="Ingen data")
+            self.no_data_label.config(text="INGEN DATA")
             self.no_data_label.grid(row=0, column=0, columnspan=3, pady=20)
-            # Hide all pre-created rows
             for dh in self.dest_headers:
                 dh.pack_forget()
             for group in self.dep_rows:
@@ -196,11 +209,9 @@ class DepartureBoard:
 
             group.sort(key=lambda x: x["time"])
 
-            # Show dest header
-            self.dest_headers[row_idx].config(text=f"→ {dest}")
-            self.dest_headers[row_idx].pack(fill='x', pady=(10, 5))
+            self.dest_headers[row_idx].config(text=f"→ {dest.upper()}")
+            self.dest_headers[row_idx].pack(fill='x', pady=(12, 4))
 
-            # Show departures
             for i, dep in enumerate(group[:MAX_PER_DEST]):
                 if i >= len(self.dep_rows[row_idx]):
                     break
@@ -214,14 +225,12 @@ class DepartureBoard:
                 row_frame.pack(fill='x', pady=3)
                 visible_rows += 1
 
-            # Hide unused departure slots for this group
             for i in range(min(len(group), MAX_PER_DEST), MAX_PER_DEST):
                 row_frame, line_lbl, dest_lbl, time_lbl = self.dep_rows[row_idx][i]
                 row_frame.pack_forget()
 
             row_idx += 1
 
-        # Hide unused dest groups entirely
         for idx in range(row_idx, len(self.dest_headers)):
             self.dest_headers[idx].pack_forget()
             for row_frame, _, _, _ in self.dep_rows[idx]:
@@ -229,23 +238,23 @@ class DepartureBoard:
 
 
 class OrdenTable:
-    """Orden table with pre-created widgets. Rebuilds text only, not widgets."""
-
     def __init__(self, parent):
-        self.frame = tk.Frame(parent, bg=BG_COLOR)
+        self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=15, pady=10)
 
-        headers = ['Uke', 'Dato', '1IM1', '1IM2', 'Stol', 'Vasking']
+        tk.Label(self.frame, text="ORDENSVAKT", font=FONT_SUBHEADING,
+                 bg=BG_SECONDARY, fg=HEADING_COLOR).grid(row=0, column=0, columnspan=6, sticky='w', pady=(0, 8))
+
+        headers = ['UKE', 'DATO', '1IM1', '1IM2', 'STOL', 'VASK']
         for col, header in enumerate(headers):
-            tk.Label(self.frame, text=header, font=('Arial', 16, 'bold'),
-                     bg=BG_COLOR, fg=NEON_YELLOW).grid(row=0, column=col, padx=7, pady=5, sticky='w')
+            tk.Label(self.frame, text=header, font=FONT_TABLE_HEADER,
+                     bg=BG_SECONDARY, fg=HEADING_COLOR).grid(row=1, column=col, padx=7, pady=5, sticky='w')
 
         self.cells = []
-        # Pre-create 26 week rows (covers full year)
-        for row in range(1, 27):
+        for row in range(2, 28):
             row_cells = []
             for col in range(6):
-                lbl = tk.Label(self.frame, text="", font=('Arial', 13),
-                               bg=BG_COLOR, fg=TEXT_COLOR)
+                lbl = tk.Label(self.frame, text="", font=FONT_BODY_SMALL,
+                               bg=BG_SECONDARY, fg=TEXT_COLOR)
                 lbl.grid(row=row, column=col, padx=7, pady=3, sticky='w')
                 row_cells.append(lbl)
             self.cells.append(row_cells)
@@ -263,8 +272,8 @@ class OrdenTable:
                 break
             week_num = int(uke[3:])
             if week_num == current_week:
-                color = NEON_BLUE
-                font_style = ('Arial', 13)
+                color = HEADING_COLOR
+                font_style = ('Arial', 13, 'bold')
             elif week_num < current_week:
                 color = SUBTEXT_COLOR
                 font_style = ('Arial', 13, 'overstrike')
@@ -283,24 +292,22 @@ root = tk.Tk()
 root.attributes('-fullscreen', True)
 root.configure(bg=BG_COLOR)
 
-# Title bar
 title_frame = tk.Frame(root, bg=BG_COLOR)
-title_frame.pack(fill='x', pady=20)
+title_frame.pack(fill='x', pady=20, padx=40)
 
-tk.Label(title_frame, text="Bussavganger – Charlottenlund vgs",
-         font=('Arial', 40, 'bold'), bg=BG_COLOR, fg=NEON_YELLOW).pack(side='left', padx=50)
+tk.Label(title_frame, text="BUSSAVGANGER — CHARLOTTENLUND VGS",
+         font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR).pack(side='left')
 
-time_label = tk.Label(title_frame, text='', font=('Arial', 36),
+time_label = tk.Label(title_frame, text='', font=FONT_CLOCK,
                       bg=BG_COLOR, fg=TEXT_COLOR)
 time_label.pack(side='right', padx=50)
 
-status_label = tk.Label(title_frame, text='', font=('Arial', 20),
+status_label = tk.Label(title_frame, text='', font=FONT_STATUS,
                         bg=BG_COLOR, fg=TEXT_COLOR)
 status_label.pack(side='right', padx=30)
 
-# Main content
 main_container = tk.Frame(root, bg=BG_COLOR)
-main_container.pack(expand=True, fill='both', padx=20)
+main_container.pack(expand=True, fill='both', padx=30, pady=(0, 20))
 
 board = DepartureBoard(main_container)
 board.pack(side='left', fill='both', expand=True, padx=(0, 20))
@@ -319,7 +326,7 @@ def update_time():
 def update_departures():
     board.update_display()
     if not is_online:
-        status_label.config(text="⚠ Offline", fg=SUBTEXT_COLOR)
+        status_label.config(text="⚠ OFFLINE", fg=ALERT_COLOR)
     elif last_update:
         ago = int((datetime.datetime.now(LOCAL_TZ) - last_update).total_seconds())
         status_label.config(text=f"Oppdatert {ago}s siden", fg=SUBTEXT_COLOR)
@@ -331,11 +338,9 @@ def update_orden():
     root.after(REFRESH_ORDEN_MIN * 60 * 1000, update_orden)
 
 
-# Start background API fetcher
 fetch_thread = threading.Thread(target=fetch_loop, daemon=True)
 fetch_thread.start()
 
-# Initial fetch then start UI updates
 update_time()
 update_departures()
 update_orden()
