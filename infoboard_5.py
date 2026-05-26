@@ -49,8 +49,6 @@ FONT_TABLE_HEADER = ('Arial', 16, 'bold')
 FONT_TITLE = ('Arial', 40, 'bold')
 FONT_CLOCK = ('Arial', 36)
 FONT_STATUS = ('Arial', 20)
-FONT_IM_LABEL = ('Arial', 36, 'bold')
-
 # === State ===
 cached_departures = []
 last_update = None
@@ -135,37 +133,36 @@ def format_time(dep_time):
 
 
 def create_pattern_bg(width, height):
-    """Create the IM pattern background with geometric diamonds on Charlottenlund purple."""
+    """Create background using the actual IM Mønster pattern tiled on Charlottenlund purple."""
+    pattern_path = os.path.join(SCRIPT_DIR, 'bg_pattern_real.png')
+    if os.path.exists(pattern_path):
+        bg = Image.open(pattern_path).convert('RGB')
+        if bg.size != (width, height):
+            bg = bg.resize((width, height), Image.LANCZOS)
+        return bg
+
+    # Fallback: generate subtle geometric pattern
     bg = Image.new('RGBA', (width, height), BG_COLOR)
     draw = ImageDraw.Draw(bg, 'RGBA')
 
-    diamond_size = 80
     spacing = 120
     opacity = 25
-
     pattern_color = (0x38, 0xab, 0xa3, opacity)
     pattern_color2 = (0x00, 0x81, 0x6d, opacity)
 
-    for y in range(-diamond_size, height + diamond_size, spacing):
-        for x in range(-diamond_size, width + diamond_size, spacing):
+    for y in range(-80, height + 80, spacing):
+        for x in range(-80, width + 80, spacing):
             x_offset = spacing // 2 if (y // spacing) % 2 else 0
             cx = x + x_offset
             cy = y
-
             points = [
-                (cx, cy - diamond_size // 3),
-                (cx + diamond_size // 3, cy),
-                (cx, cy + diamond_size // 3),
-                (cx - diamond_size // 3, cy),
+                (cx, cy - 27), (cx + 27, cy),
+                (cx, cy + 27), (cx - 27, cy),
             ]
             draw.polygon(points, fill=pattern_color)
-
-            inner_size = diamond_size // 6
             inner_points = [
-                (cx, cy - inner_size),
-                (cx + inner_size, cy),
-                (cx, cy + inner_size),
-                (cx - inner_size, cy),
+                (cx, cy - 13), (cx + 13, cy),
+                (cx, cy + 13), (cx - 13, cy),
             ]
             draw.polygon(inner_points, fill=pattern_color2)
 
@@ -231,7 +228,7 @@ class DepartureBoard:
 
         if not sorted_groups:
             self.no_data_label.config(text="INGEN DATA")
-            self.no_data_label.grid(row=0, column=0, columnspan=3, pady=20)
+            self.no_data_label.pack(pady=20)
             for dh in self.dest_headers:
                 dh.pack_forget()
             for group in self.dep_rows:
@@ -343,43 +340,17 @@ try:
 except Exception as e:
     log(f"Background pattern failed ({e}), using solid color")
 
-# === IM Logo in header ===
-try:
-    logo_pil = Image.open(os.path.join(SCRIPT_DIR, 'im_logo_small.png')).convert('RGBA')
-    # Make white background transparent
-    logo_data = logo_pil.getdata()
-    new_logo_data = []
-    for item in logo_data:
-        r, g, b, a = item
-        if r > 240 and g > 240 and b > 240:
-            new_logo_data.append((0, 0, 0, 0))
-        else:
-            new_logo_data.append((r, g, b, a))
-    logo_pil.putdata(new_logo_data)
-
-    # Create a version on purple background for tkinter (which doesn't handle alpha well)
-    logo_bg = Image.new('RGBA', logo_pil.size, BG_COLOR)
-    logo_bg.paste(logo_pil, (0, 0), logo_pil)
-    logo_photo = ImageTk.PhotoImage(logo_bg.convert('RGB'))
-except Exception as e:
-    log(f"Logo load failed ({e})")
-    logo_photo = None
-
 # === Header with IM branding ===
 title_frame = tk.Frame(root, bg=BG_COLOR)
 title_frame.pack(fill='x', pady=20, padx=40)
 
-if logo_photo:
-    logo_label = tk.Label(title_frame, image=logo_photo, bg=BG_COLOR)
-    logo_label.pack(side='left', padx=(0, 15))
-    logo_label.image = logo_photo  # prevent GC
+# IM badge — bold yellow text with teal accent bar for high contrast on purple
+im_badge = tk.Frame(title_frame, bg=IM_TEAL, padx=12, pady=4)
+im_badge.pack(side='left', padx=(0, 15))
+tk.Label(im_badge, text="IM", font=('Arial', 48, 'bold'),
+         bg=IM_TEAL, fg='#FFFFFF').pack()
 
-# Title with IM line name
-im_label = tk.Label(title_frame, text="IM", font=FONT_IM_LABEL,
-                    bg=BG_COLOR, fg=IM_TEAL)
-im_label.pack(side='left', padx=(0, 10))
-
-title_label = tk.Label(title_frame, text="— BUSSAVGANGER — CHARLOTTENLUND VGS",
+title_label = tk.Label(title_frame, text="BUSSAVGANGER — CHARLOTTENLUND VGS",
                         font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR)
 title_label.pack(side='left')
 
