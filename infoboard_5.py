@@ -4,6 +4,8 @@ import xmltodict
 import datetime
 import json
 import threading
+import os
+from PIL import Image, ImageTk, ImageDraw
 from datetime import timezone, timedelta
 from collections import defaultdict
 
@@ -22,26 +24,23 @@ MAX_DEPARTURES = 12
 MAX_PER_DEST = 5
 REFRESH_API_SEC = 60
 REFRESH_ORDEN_MIN = 5
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # === Charlottenlund vgs Visual Profile Colors ===
-# PMS 2627 — main background (purple)
 BG_COLOR = '#3C1053'
-# Secondary background — slightly lighter purple for cards/sections
 BG_SECONDARY = '#4A1366'
-# PMS 108 — headings (yellow)
 HEADING_COLOR = '#FFD244'
-# PMS 7473 — accent/line numbers (teal-green from logo)
 ACCENT_COLOR = '#00816D'
-# PMS 568 — secondary accent (darker teal from logo)
 ACCENT_DARK = '#006C5B'
-# Body text — white
 TEXT_COLOR = '#FFFFFF'
-# Subtle text — muted lavender
 SUBTEXT_COLOR = '#B89CC8'
-# PMS 021 — alert/offline indicator (orange)
 ALERT_COLOR = '#EA560D'
 
-# === Fonts (Charlottenlund profile: Arial as substitute for Proxima Nova Alt) ===
+# IM line colors (from IM visual identity)
+IM_TEAL = '#38aba3'
+IM_TEAL_DARK = '#00816d'
+
+# === Fonts ===
 FONT_HEADING = ('Arial', 40, 'bold')
 FONT_SUBHEADING = ('Arial', 28, 'bold')
 FONT_BODY = ('Arial', 24)
@@ -50,6 +49,7 @@ FONT_TABLE_HEADER = ('Arial', 16, 'bold')
 FONT_TITLE = ('Arial', 40, 'bold')
 FONT_CLOCK = ('Arial', 36)
 FONT_STATUS = ('Arial', 20)
+FONT_IM_LABEL = ('Arial', 36, 'bold')
 
 # === State ===
 cached_departures = []
@@ -60,12 +60,12 @@ departures_lock = threading.Lock()
 
 def log(msg):
     now = datetime.datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
-    with open("infoboard.log", "a", encoding="utf-8") as f:
+    with open(os.path.join(SCRIPT_DIR, "infoboard.log"), "a", encoding="utf-8") as f:
         f.write(f"[{now}] {msg}\n")
 
 
 def fetch_orden():
-    with open('orden.json', 'r', encoding="UTF-8") as f:
+    with open(os.path.join(SCRIPT_DIR, 'orden.json'), 'r', encoding="UTF-8") as f:
         return json.load(f)
 
 
@@ -132,6 +132,44 @@ def format_time(dep_time):
         return f"{delta} MIN"
     else:
         return dep_time.strftime("%H:%M")
+
+
+def create_pattern_bg(width, height):
+    """Create the IM pattern background with geometric diamonds on Charlottenlund purple."""
+    bg = Image.new('RGBA', (width, height), BG_COLOR)
+    draw = ImageDraw.Draw(bg, 'RGBA')
+
+    diamond_size = 80
+    spacing = 120
+    opacity = 25
+
+    pattern_color = (0x38, 0xab, 0xa3, opacity)
+    pattern_color2 = (0x00, 0x81, 0x6d, opacity)
+
+    for y in range(-diamond_size, height + diamond_size, spacing):
+        for x in range(-diamond_size, width + diamond_size, spacing):
+            x_offset = spacing // 2 if (y // spacing) % 2 else 0
+            cx = x + x_offset
+            cy = y
+
+            points = [
+                (cx, cy - diamond_size // 3),
+                (cx + diamond_size // 3, cy),
+                (cx, cy + diamond_size // 3),
+                (cx - diamond_size // 3, cy),
+            ]
+            draw.polygon(points, fill=pattern_color)
+
+            inner_size = diamond_size // 6
+            inner_points = [
+                (cx, cy - inner_size),
+                (cx + inner_size, cy),
+                (cx, cy + inner_size),
+                (cx - inner_size, cy),
+            ]
+            draw.polygon(inner_points, fill=pattern_color2)
+
+    return bg.convert('RGB')
 
 
 class DepartureBoard:
@@ -292,11 +330,58 @@ root = tk.Tk()
 root.attributes('-fullscreen', True)
 root.configure(bg=BG_COLOR)
 
+# === Pattern background ===
+screen_w = root.winfo_screenwidth()
+screen_h = root.winfo_screenheight()
+try:
+    bg_image_pil = create_pattern_bg(screen_w, screen_h)
+    bg_photo = ImageTk.PhotoImage(bg_image_pil)
+
+    bg_label = tk.Label(root, image=bg_photo, bg=BG_COLOR)
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+    bg_label.image = bg_photo  # prevent GC
+except Exception as e:
+    log(f"Background pattern failed ({e}), using solid color")
+
+# === IM Logo in header ===
+try:
+    logo_pil = Image.open(os.path.join(SCRIPT_DIR, 'im_logo_small.png')).convert('RGBA')
+    # Make white background transparent
+    logo_data = logo_pil.getdata()
+    new_logo_data = []
+    for item in logo_data:
+        r, g, b, a = item
+        if r > 240 and g > 240 and b > 240:
+            new_logo_data.append((0, 0, 0, 0))
+        else:
+            new_logo_data.append((r, g, b, a))
+    logo_pil.putdata(new_logo_data)
+
+    # Create a version on purple background for tkinter (which doesn't handle alpha well)
+    logo_bg = Image.new('RGBA', logo_pil.size, BG_COLOR)
+    logo_bg.paste(logo_pil, (0, 0), logo_pil)
+    logo_photo = ImageTk.PhotoImage(logo_bg.convert('RGB'))
+except Exception as e:
+    log(f"Logo load failed ({e})")
+    logo_photo = None
+
+# === Header with IM branding ===
 title_frame = tk.Frame(root, bg=BG_COLOR)
 title_frame.pack(fill='x', pady=20, padx=40)
 
-tk.Label(title_frame, text="BUSSAVGANGER — CHARLOTTENLUND VGS",
-         font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR).pack(side='left')
+if logo_photo:
+    logo_label = tk.Label(title_frame, image=logo_photo, bg=BG_COLOR)
+    logo_label.pack(side='left', padx=(0, 15))
+    logo_label.image = logo_photo  # prevent GC
+
+# Title with IM line name
+im_label = tk.Label(title_frame, text="IM", font=FONT_IM_LABEL,
+                    bg=BG_COLOR, fg=IM_TEAL)
+im_label.pack(side='left', padx=(0, 10))
+
+title_label = tk.Label(title_frame, text="— BUSSAVGANGER — CHARLOTTENLUND VGS",
+                        font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR)
+title_label.pack(side='left')
 
 time_label = tk.Label(title_frame, text='', font=FONT_CLOCK,
                       bg=BG_COLOR, fg=TEXT_COLOR)
