@@ -9,24 +9,26 @@ from PIL import Image, ImageTk, ImageDraw
 from datetime import timezone, timedelta
 from collections import defaultdict
 
-# === Timezone setup ===
 try:
     from zoneinfo import ZoneInfo
     LOCAL_TZ = ZoneInfo("Europe/Oslo")
 except Exception:
-    LOCAL_TZ = timezone(timedelta(hours=1))
+    LOCAL_TZ = timezone(timedelta(hours=2))  # CEST fallback (summer)
 
-# === Constants ===
+# === Paths ===
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# === API ===
 API_URL = "https://api.entur.io/realtime/v1/rest/et?datasetId=ATB"
-HEADERS = {'ET-Client-Name': 'Charlottenlund vgs'}
+HEADERS = {'ET-Client-Name': 'Charlottenlund vgs IM'}
 STOP_PLACE = "NSR:Quay:75404"
 MAX_DEPARTURES = 12
 MAX_PER_DEST = 5
 REFRESH_API_SEC = 60
 REFRESH_ORDEN_MIN = 5
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+API_TIMEOUT = 10
 
-# === Charlottenlund vgs Visual Profile Colors ===
+# === Charlottenlund vgs Visual Profile ===
 BG_COLOR = '#3C1053'
 BG_SECONDARY = '#4A1366'
 HEADING_COLOR = '#FFD244'
@@ -35,24 +37,24 @@ ACCENT_DARK = '#006C5B'
 TEXT_COLOR = '#FFFFFF'
 SUBTEXT_COLOR = '#B89CC8'
 ALERT_COLOR = '#EA560D'
-
-# IM line colors (from IM visual identity)
 IM_TEAL = '#38aba3'
-IM_TEAL_DARK = '#00816d'
 
 # === Fonts ===
-FONT_HEADING = ('Arial', 40, 'bold')
+FONT_TITLE = ('Arial', 40, 'bold')
 FONT_SUBHEADING = ('Arial', 28, 'bold')
 FONT_BODY = ('Arial', 24)
 FONT_BODY_SMALL = ('Arial', 13)
 FONT_TABLE_HEADER = ('Arial', 16, 'bold')
-FONT_TITLE = ('Arial', 40, 'bold')
 FONT_CLOCK = ('Arial', 36)
+FONT_LINE_BADGE = ('Arial', 22, 'bold')
+FONT_TIME = ('Arial', 24, 'bold')
 FONT_STATUS = ('Arial', 20)
+FONT_IM_BADGE = ('Arial', 48, 'bold')
+
 # === State ===
 cached_departures = []
 last_update = None
-is_online = True
+is_online = False
 departures_lock = threading.Lock()
 
 
@@ -63,18 +65,24 @@ def log(msg):
 
 
 def fetch_orden():
-    with open(os.path.join(SCRIPT_DIR, 'orden.json'), 'r', encoding="UTF-8") as f:
-        return json.load(f)
+    path = os.path.join(SCRIPT_DIR, 'orden.json')
+    try:
+        with open(path, 'r', encoding="UTF-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        log(f"Orden load failed ({e})")
+        return {}
 
 
 def parse_departures():
     global cached_departures, last_update, is_online
     try:
-        response = requests.get(API_URL, headers=HEADERS, timeout=6)
+        response = requests.get(API_URL, headers=HEADERS, timeout=API_TIMEOUT)
         response.raise_for_status()
         doc = xmltodict.parse(response.text)
 
-        journeys = doc["Siri"]["ServiceDelivery"]["EstimatedTimetableDelivery"]["EstimatedJourneyVersionFrame"]["EstimatedVehicleJourney"]
+        etd = doc["Siri"]["ServiceDelivery"]["EstimatedTimetableDelivery"]
+        journeys = etd["EstimatedJourneyVersionFrame"]["EstimatedVehicleJourney"]
         if isinstance(journeys, dict):
             journeys = [journeys]
 
@@ -89,7 +97,9 @@ def parse_departures():
                 if stop.get("StopPointRef") == STOP_PLACE:
                     t = stop.get("ExpectedArrivalTime") or stop.get("ExpectedDepartureTime")
                     if t:
-                        dep_time = datetime.datetime.fromisoformat(t.replace("Z", "+00:00")).astimezone(LOCAL_TZ)
+                        dep_time = datetime.datetime.fromisoformat(
+                            t.replace("Z", "+00:00")
+                        ).astimezone(LOCAL_TZ)
                         dest = j.get("DestinationName", "").strip()
                         if dest.lower() == "valøyvegen":
                             dest = "Tempe"
@@ -133,39 +143,28 @@ def format_time(dep_time):
 
 
 def create_pattern_bg(width, height):
-    """Create background using the actual IM Mønster pattern tiled on Charlottenlund purple."""
     pattern_path = os.path.join(SCRIPT_DIR, 'bg_pattern_real.png')
     if os.path.exists(pattern_path):
-        bg = Image.open(pattern_path).convert('RGB')
-        if bg.size != (width, height):
-            bg = bg.resize((width, height), Image.LANCZOS)
-        return bg
+        try:
+            bg = Image.open(pattern_path).convert('RGB')
+            if bg.size != (width, height):
+                bg = bg.resize((width, height), Image.LANCZOS)
+            return bg
+        except Exception as e:
+            log(f"Pattern load failed ({e}), generating fallback")
 
-    # Fallback: generate subtle geometric pattern
+    # Fallback: procedural diamond pattern
     bg = Image.new('RGBA', (width, height), BG_COLOR)
     draw = ImageDraw.Draw(bg, 'RGBA')
-
     spacing = 120
-    opacity = 25
-    pattern_color = (0x38, 0xab, 0xa3, opacity)
-    pattern_color2 = (0x00, 0x81, 0x6d, opacity)
-
     for y in range(-80, height + 80, spacing):
         for x in range(-80, width + 80, spacing):
             x_offset = spacing // 2 if (y // spacing) % 2 else 0
-            cx = x + x_offset
-            cy = y
-            points = [
-                (cx, cy - 27), (cx + 27, cy),
-                (cx, cy + 27), (cx - 27, cy),
-            ]
-            draw.polygon(points, fill=pattern_color)
-            inner_points = [
-                (cx, cy - 13), (cx + 13, cy),
-                (cx, cy + 13), (cx - 13, cy),
-            ]
-            draw.polygon(inner_points, fill=pattern_color2)
-
+            cx, cy = x + x_offset, y
+            draw.polygon([(cx, cy-27), (cx+27, cy), (cx, cy+27), (cx-27, cy)],
+                         fill=(0x38, 0xab, 0xa3, 25))
+            draw.polygon([(cx, cy-13), (cx+13, cy), (cx, cy+13), (cx-13, cy)],
+                         fill=(0x00, 0x81, 0x6d, 25))
     return bg.convert('RGB')
 
 
@@ -173,7 +172,6 @@ class DepartureBoard:
     def __init__(self, parent):
         self.frame = tk.Frame(parent, bg=BG_COLOR)
 
-        # Header row
         hdr = tk.Frame(self.frame, bg=BG_SECONDARY)
         hdr.pack(fill='x', ipady=8)
         tk.Label(hdr, text="LINJE", font=FONT_SUBHEADING,
@@ -196,11 +194,11 @@ class DepartureBoard:
             group = []
             for _ in range(MAX_PER_DEST):
                 row_frame = tk.Frame(self.rows_frame, bg=BG_COLOR)
-                line_lbl = tk.Label(row_frame, text="", font=('Arial', 22, 'bold'),
+                line_lbl = tk.Label(row_frame, text="", font=FONT_LINE_BADGE,
                                     bg=ACCENT_COLOR, fg='#FFFFFF', width=5, anchor='center')
                 dest_lbl = tk.Label(row_frame, text="", font=FONT_BODY,
                                     bg=BG_COLOR, fg=TEXT_COLOR, anchor='w')
-                time_lbl = tk.Label(row_frame, text="", font=('Arial', 24, 'bold'),
+                time_lbl = tk.Label(row_frame, text="", font=FONT_TIME,
                                     bg=BG_COLOR, fg=HEADING_COLOR, anchor='e')
                 line_lbl.pack(side='left', padx=(10, 5), ipady=2)
                 dest_lbl.pack(side='left', padx=20, fill='x', expand=True)
@@ -223,9 +221,6 @@ class DepartureBoard:
             grouped[d["destination"]].append(d)
         sorted_groups = sorted(grouped.items(), key=lambda kv: kv[1][0]["time"])
 
-        row_idx = 0
-        visible_rows = 0
-
         if not sorted_groups:
             self.no_data_label.config(text="INGEN DATA")
             self.no_data_label.pack(pady=20)
@@ -238,12 +233,12 @@ class DepartureBoard:
 
         self.no_data_label.pack_forget()
 
+        row_idx = 0
         for dest, group in sorted_groups:
             if row_idx >= len(self.dest_headers):
                 break
 
             group.sort(key=lambda x: x["time"])
-
             self.dest_headers[row_idx].config(text=f"→ {dest.upper()}")
             self.dest_headers[row_idx].pack(fill='x', pady=(12, 4))
 
@@ -258,11 +253,9 @@ class DepartureBoard:
                 dest_lbl.config(text=dep['destination'])
                 time_lbl.config(text=time_text)
                 row_frame.pack(fill='x', pady=3)
-                visible_rows += 1
 
             for i in range(min(len(group), MAX_PER_DEST), MAX_PER_DEST):
-                row_frame, line_lbl, dest_lbl, time_lbl = self.dep_rows[row_idx][i]
-                row_frame.pack_forget()
+                self.dep_rows[row_idx][i][0].pack_forget()
 
             row_idx += 1
 
@@ -277,12 +270,14 @@ class OrdenTable:
         self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=15, pady=10)
 
         tk.Label(self.frame, text="ORDENSVAKT", font=FONT_SUBHEADING,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR).grid(row=0, column=0, columnspan=6, sticky='w', pady=(0, 8))
+                 bg=BG_SECONDARY, fg=HEADING_COLOR).grid(
+                     row=0, column=0, columnspan=6, sticky='w', pady=(0, 8))
 
         headers = ['UKE', 'DATO', '1IM1', '1IM2', 'STOL', 'VASK']
         for col, header in enumerate(headers):
             tk.Label(self.frame, text=header, font=FONT_TABLE_HEADER,
-                     bg=BG_SECONDARY, fg=HEADING_COLOR).grid(row=1, column=col, padx=7, pady=5, sticky='w')
+                     bg=BG_SECONDARY, fg=HEADING_COLOR).grid(
+                         row=1, column=col, padx=7, pady=5, sticky='w')
 
         self.cells = []
         for row in range(2, 28):
@@ -299,7 +294,7 @@ class OrdenTable:
 
     def update_display(self):
         orden_data = fetch_orden()
-        current_week = datetime.datetime.now().isocalendar()[1]
+        current_week = datetime.datetime.now(LOCAL_TZ).isocalendar()[1]
 
         row_idx = 0
         for uke, info in orden_data.items():
@@ -316,7 +311,8 @@ class OrdenTable:
                 color = TEXT_COLOR
                 font_style = ('Arial', 13)
 
-            data = [uke, info['dato'], info['1IM1'], info['1IM2'], info['stoler'], info['vasking']]
+            data = [uke, info['dato'], info['1IM1'], info['1IM2'],
+                    info['stoler'], info['vasking']]
             for col, val in enumerate(data):
                 self.cells[row_idx][col].config(text=val, fg=color, font=font_style)
             row_idx += 1
@@ -333,26 +329,23 @@ screen_h = root.winfo_screenheight()
 try:
     bg_image_pil = create_pattern_bg(screen_w, screen_h)
     bg_photo = ImageTk.PhotoImage(bg_image_pil)
-
     bg_label = tk.Label(root, image=bg_photo, bg=BG_COLOR)
     bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-    bg_label.image = bg_photo  # prevent GC
+    bg_label.image = bg_photo
 except Exception as e:
     log(f"Background pattern failed ({e}), using solid color")
 
-# === Header with IM branding ===
+# === Header ===
 title_frame = tk.Frame(root, bg=BG_COLOR)
 title_frame.pack(fill='x', pady=20, padx=40)
 
-# IM badge — bold yellow text with teal accent bar for high contrast on purple
 im_badge = tk.Frame(title_frame, bg=IM_TEAL, padx=12, pady=4)
 im_badge.pack(side='left', padx=(0, 15))
-tk.Label(im_badge, text="IM", font=('Arial', 48, 'bold'),
+tk.Label(im_badge, text="IM", font=FONT_IM_BADGE,
          bg=IM_TEAL, fg='#FFFFFF').pack()
 
-title_label = tk.Label(title_frame, text="BUSSAVGANGER — CHARLOTTENLUND VGS",
-                        font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR)
-title_label.pack(side='left')
+tk.Label(title_frame, text="BUSSAVGANGER — CHARLOTTENLUND VGS",
+         font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR).pack(side='left')
 
 time_label = tk.Label(title_frame, text='', font=FONT_CLOCK,
                       bg=BG_COLOR, fg=TEXT_COLOR)
@@ -362,6 +355,7 @@ status_label = tk.Label(title_frame, text='', font=FONT_STATUS,
                         bg=BG_COLOR, fg=TEXT_COLOR)
 status_label.pack(side='right', padx=30)
 
+# === Main content ===
 main_container = tk.Frame(root, bg=BG_COLOR)
 main_container.pack(expand=True, fill='both', padx=30, pady=(0, 20))
 
@@ -385,7 +379,10 @@ def update_departures():
         status_label.config(text="⚠ OFFLINE", fg=ALERT_COLOR)
     elif last_update:
         ago = int((datetime.datetime.now(LOCAL_TZ) - last_update).total_seconds())
-        status_label.config(text=f"Oppdatert {ago}s siden", fg=SUBTEXT_COLOR)
+        if ago > 120:
+            status_label.config(text=f"Oppdatert {ago // 60}min siden", fg=ALERT_COLOR)
+        else:
+            status_label.config(text="", fg=TEXT_COLOR)
     root.after(10000, update_departures)
 
 
