@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font
 import requests
 import xmltodict
 import datetime
@@ -70,8 +71,8 @@ DISCORD_BG = '#5865F2'  # Discord blurple for icons
 # To install Widescreen: place .ttf files in script dir or system fonts folder,
 # then restart the app.
 
-FONTS_BOLD = ['Widescreen XBold', 'Widescreen-XBold', 'Widescreen']
-FONTS_LIGHT = ['Widescreen Light', 'Widescreen-Light', 'Widescreen']
+FONTS_BOLD = ['Widescreen XBold', 'Widescreen Mixed XBold', 'Widescreen Ex XBold', 'Widescreen']
+FONTS_LIGHT = ['Widescreen Light', 'Widescreen Mixed Light', 'Widescreen Ex Light', 'Widescreen']
 
 _font_cache = {}
 
@@ -109,6 +110,8 @@ FONT_IM_BADGE = None
 FONT_DISCORD_MSG = None
 FONT_DISCORD_AUTHOR = None
 FONT_DISCORD_TIME = None
+FONT_BIRTHDAY_NAME = None
+FONT_BIRTHDAY_DATE = None
 
 
 def init_fonts():
@@ -117,6 +120,7 @@ def init_fonts():
     global FONT_BODY_SMALL, FONT_TABLE_HEADER, FONT_CLOCK
     global FONT_LINE_BADGE, FONT_TIME, FONT_STATUS, FONT_IM_BADGE
     global FONT_DISCORD_MSG, FONT_DISCORD_AUTHOR, FONT_DISCORD_TIME
+    global FONT_BIRTHDAY_NAME, FONT_BIRTHDAY_DATE
     FONT_TITLE = resolve_font(40, 'xbold')         # h1
     FONT_SUBHEADING = resolve_font(28, 'xbold')     # h2
     FONT_BODY = resolve_font(17, 'normal')           # body
@@ -131,6 +135,8 @@ def init_fonts():
     FONT_DISCORD_MSG = resolve_font(14, 'normal')     # Discord content
     FONT_DISCORD_AUTHOR = resolve_font(14, 'xbold')   # Discord author
     FONT_DISCORD_TIME = resolve_font(12, 'normal')     # Discord time
+    FONT_BIRTHDAY_NAME = resolve_font(17, 'xbold')     # Birthday name
+    FONT_BIRTHDAY_DATE = resolve_font(14, 'normal')     # Birthday date
 
 # === Border Radius ===
 CORNER_RADIUS = 8
@@ -509,6 +515,91 @@ class DiscordPanel:
                 msg_frame.pack_forget()
 
 
+def fetch_bursdager():
+    """Load birthdays from bursdager.json."""
+    path = os.path.join(SCRIPT_DIR, 'bursdager.json')
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def get_week_birthdays():
+    """Return birthdays falling within the current ISO week."""
+    all_bdays = fetch_bursdager()
+    if not all_bdays:
+        return []
+    now = datetime.datetime.now(LOCAL_TZ)
+    iso = now.isocalendar()
+    week_start = datetime.datetime.fromisocalendar(iso[0], iso[1], 1, tzinfo=LOCAL_TZ)
+    week_end = week_start + datetime.timedelta(days=6, hours=23, minutes=59, seconds=59)
+    result = []
+    for name, date_str in all_bdays.items():
+        try:
+            bday = datetime.datetime.strptime(date_str, "%d.%m").replace(
+                year=now.year, tzinfo=LOCAL_TZ)
+            if week_start <= bday <= week_end:
+                day_name = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"][bday.weekday()]
+                result.append({"name": name, "day": day_name, "date": date_str})
+        except ValueError:
+            continue
+    result.sort(key=lambda x: x["date"])
+    return result
+
+
+class BirthdayPanel:
+    """Panel showing weekly birthdays (Ukens bursdagsbarn)."""
+
+    def __init__(self, parent):
+        self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=20, pady=16)
+
+        tk.Label(self.frame, text="UKENS BURSDAGSBARN", font=FONT_SUBHEADING,
+                 bg=BG_SECONDARY, fg=HEADING_COLOR, anchor='w').pack(fill='x', pady=(0, 12))
+
+        self.bday_labels = []
+        for _ in range(5):
+            row = tk.Frame(self.frame, bg=BG_SECONDARY)
+            name_lbl = tk.Label(row, font=FONT_BIRTHDAY_NAME,
+                                bg=BG_SECONDARY, fg=TEXT_COLOR, anchor='w')
+            dash_lbl = tk.Label(row, font=FONT_BODY_SMALL,
+                                bg=BG_SECONDARY, fg=SUBTEXT_COLOR, text=" – ")
+            day_lbl = tk.Label(row, font=FONT_BIRTHDAY_DATE,
+                               bg=BG_SECONDARY, fg=IM_TEAL, anchor='w')
+            date_lbl = tk.Label(row, font=FONT_BIRTHDAY_DATE,
+                                bg=BG_SECONDARY, fg=SUBTEXT_COLOR, anchor='e')
+            name_lbl.pack(side='left')
+            dash_lbl.pack(side='left')
+            day_lbl.pack(side='left', padx=(0, 8))
+            date_lbl.pack(side='right')
+            self.bday_labels.append((row, name_lbl, day_lbl, date_lbl))
+
+        self.no_data_label = tk.Label(self.frame, text="Ingen bursdager denne uken",
+                                       font=FONT_BODY, bg=BG_SECONDARY, fg=SUBTEXT_COLOR)
+
+    def pack(self, **kwargs):
+        self.frame.pack(**kwargs)
+
+    def update_display(self):
+        bdays = get_week_birthdays()
+        if not bdays:
+            self.no_data_label.pack(pady=10)
+            for row, _, _, _ in self.bday_labels:
+                row.pack_forget()
+            return
+
+        self.no_data_label.pack_forget()
+        for i, (row, name_lbl, day_lbl, date_lbl) in enumerate(self.bday_labels):
+            if i < len(bdays):
+                b = bdays[i]
+                name_lbl.config(text=b["name"])
+                day_lbl.config(text=b["day"])
+                date_lbl.config(text=b["date"])
+                row.pack(fill='x', pady=3)
+            else:
+                row.pack_forget()
+
+
 class OrdenTable:
     def __init__(self, parent):
         self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=20, pady=16)
@@ -604,7 +695,7 @@ status_label.pack(side='right', padx=(0, 20))
 sep = tk.Frame(root, bg=ACCENT_COLOR, height=2)
 sep.pack(fill='x', padx=40, pady=(0, 10))
 
-# === Main content — 3 columns: Buss | Discord | Orden ===
+# === Main content — 3 columns: Buss | Right stack (Discord + Bursdag) | Orden ===
 main_container = tk.Frame(root, bg=BG_COLOR)
 main_container.pack(expand=True, fill='both', padx=40, pady=(0, 20))
 
@@ -612,11 +703,17 @@ main_container.pack(expand=True, fill='both', padx=40, pady=(0, 20))
 board = DepartureBoard(main_container)
 board.pack(side='left', fill='both', expand=True, padx=(0, 12))
 
-# Column 2: Discord (center, fixed-ish width)
-discord = DiscordPanel(main_container)
-discord.pack(side='left', fill='both', expand=False, padx=(0, 12))
+# Column 2: Right-side stack (Discord on top, Bursdag below)
+right_stack = tk.Frame(main_container, bg=BG_COLOR)
+right_stack.pack(side='left', fill='both', expand=False, padx=(0, 12))
 
-# Column 3: Ordensvakt (right, fixed width)
+discord = DiscordPanel(right_stack)
+discord.pack(fill='both', expand=True, pady=(0, 10))
+
+birthday = BirthdayPanel(right_stack)
+birthday.pack(fill='x')
+
+# Column 3: Ordensvakt (far right, fixed width)
 orden = OrdenTable(main_container)
 orden.pack(side='right', fill='both', expand=False)
 
@@ -651,6 +748,11 @@ def update_discord():
     root.after(CONFIG.get("discord_refresh_sec", 60) * 1000, update_discord)
 
 
+def update_birthday():
+    birthday.update_display()
+    root.after(60 * 60 * 1000, update_birthday)  # Refresh hourly
+
+
 fetch_thread = threading.Thread(target=fetch_loop, daemon=True)
 fetch_thread.start()
 
@@ -658,4 +760,5 @@ update_time()
 update_departures()
 update_orden()
 update_discord()
+update_birthday()
 root.mainloop()
