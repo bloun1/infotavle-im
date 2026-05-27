@@ -64,22 +64,73 @@ ALERT_COLOR = '#EA560D'
 IM_TEAL = '#38aba3'
 DISCORD_BG = '#5865F2'  # Discord blurple for icons
 
-# === Fonts (proportional scale: 2.4x → 1.7x → 1.0x → 0.65x) ===
-# Swap to Widescreen XBold/Light when fonts arrive
-FONT_TITLE = ('Arial', 40, 'bold')       # h1 — 2.4x base
-FONT_SUBHEADING = ('Arial', 28, 'bold')   # h2 — 1.7x base
-FONT_BODY = ('Arial', 17)                 # body — 1.0x base
-FONT_BODY_BOLD = ('Arial', 17, 'bold')    # body bold — 1.0x base
-FONT_BODY_SMALL = ('Arial', 14)           # small — 0.65x base (orden cells)
-FONT_TABLE_HEADER = ('Arial', 14, 'bold') # table header — matches small
-FONT_CLOCK = ('Arial', 36)                 # clock — slightly below h1
-FONT_LINE_BADGE = ('Arial', 17, 'bold')   # line badge — matches body
-FONT_TIME = ('Arial', 17, 'bold')         # departure time — matches body
-FONT_STATUS = ('Arial', 14)                # status — matches small
-FONT_IM_BADGE = ('Arial', 40, 'bold')     # IM badge — matches h1
-FONT_DISCORD_MSG = ('Arial', 14)          # Discord message text
-FONT_DISCORD_AUTHOR = ('Arial', 14, 'bold')  # Discord author name
-FONT_DISCORD_TIME = ('Arial', 12)         # Discord timestamp
+# === Fonts ===
+# Primary: Widescreen XBold (headings/bold) / Light (body)
+# Fallback: Arial (installed everywhere)
+# To install Widescreen: place .ttf files in script dir or system fonts folder,
+# then restart the app.
+
+FONTS_BOLD = ['Widescreen XBold', 'Widescreen-XBold', 'Widescreen']
+FONTS_LIGHT = ['Widescreen Light', 'Widescreen-Light', 'Widescreen']
+
+_font_cache = {}
+
+
+def resolve_font(size, weight='normal'):
+    """Resolve font tuple with Widescreen → Arial fallback. Call after tk.Tk()."""
+    key = (size, weight)
+    if key in _font_cache:
+        return _font_cache[key]
+    families = FONTS_BOLD if weight in ('bold', 'xbold') else FONTS_LIGHT
+    tk_weight = 'bold' if weight in ('bold', 'xbold') else 'normal'
+    available = set(tk.font.families())
+    for family in families:
+        if family in available:
+            result = (family, size, tk_weight)
+            _font_cache[key] = result
+            return result
+    result = ('Arial', size, tk_weight)
+    _font_cache[key] = result
+    return result
+
+
+# Font constants — set after root = tk.Tk() in init_fonts()
+FONT_TITLE = None
+FONT_SUBHEADING = None
+FONT_BODY = None
+FONT_BODY_BOLD = None
+FONT_BODY_SMALL = None
+FONT_TABLE_HEADER = None
+FONT_CLOCK = None
+FONT_LINE_BADGE = None
+FONT_TIME = None
+FONT_STATUS = None
+FONT_IM_BADGE = None
+FONT_DISCORD_MSG = None
+FONT_DISCORD_AUTHOR = None
+FONT_DISCORD_TIME = None
+
+
+def init_fonts():
+    """Initialize all font constants. Must be called after tk.Tk()."""
+    global FONT_TITLE, FONT_SUBHEADING, FONT_BODY, FONT_BODY_BOLD
+    global FONT_BODY_SMALL, FONT_TABLE_HEADER, FONT_CLOCK
+    global FONT_LINE_BADGE, FONT_TIME, FONT_STATUS, FONT_IM_BADGE
+    global FONT_DISCORD_MSG, FONT_DISCORD_AUTHOR, FONT_DISCORD_TIME
+    FONT_TITLE = resolve_font(40, 'xbold')         # h1
+    FONT_SUBHEADING = resolve_font(28, 'xbold')     # h2
+    FONT_BODY = resolve_font(17, 'normal')           # body
+    FONT_BODY_BOLD = resolve_font(17, 'xbold')       # body bold
+    FONT_BODY_SMALL = resolve_font(14, 'normal')      # small (orden cells)
+    FONT_TABLE_HEADER = resolve_font(14, 'xbold')     # table headers
+    FONT_CLOCK = resolve_font(36, 'normal')           # clock
+    FONT_LINE_BADGE = resolve_font(17, 'xbold')       # line badge
+    FONT_TIME = resolve_font(17, 'xbold')             # departure time
+    FONT_STATUS = resolve_font(14, 'normal')           # status
+    FONT_IM_BADGE = resolve_font(40, 'xbold')         # IM badge
+    FONT_DISCORD_MSG = resolve_font(14, 'normal')     # Discord content
+    FONT_DISCORD_AUTHOR = resolve_font(14, 'xbold')   # Discord author
+    FONT_DISCORD_TIME = resolve_font(12, 'normal')     # Discord time
 
 # === Border Radius ===
 CORNER_RADIUS = 8
@@ -515,6 +566,7 @@ class OrdenTable:
 root = tk.Tk()
 root.attributes('-fullscreen', True)
 root.configure(bg=BG_COLOR)
+init_fonts()
 
 # === Pattern background ===
 screen_w = root.winfo_screenwidth()

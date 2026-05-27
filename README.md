@@ -77,10 +77,16 @@ Ja — `isocalendar()[1]` brukes for å finne gjeldende ukenummer og fremheve de
 | Tekst | Hvit | `#FFFFFF` |
 | Subtekst | Lavendel | `#B89CC8` |
 
-### Font (midlertidig)
+### Font
 
-Arial brukes som substitutt for **Proxima Nova Alt / Widescreen XBold & Light**.
-Font byttes når merkevarefontene er klare.
+Appen bruker **Widescreen XBold** (overskrifter/bold) og **Widescreen Light** (brødtekst) fra PSD-designet.
+
+Hvis Widescreen ikke er installert, faller appen tilbake til **Arial** automatisk.
+
+**Slik installerer du Widescreen:**
+1. Skaff `Widescreen-XBold.ttf` og `Widescreen-Light.ttf`
+2. Installer i systemet (Windows: høyreklikk → Installer) ELLER legg i samme mappe som skriptet
+3. Start appen på nytt — fontene oppdages automatisk
 
 ## Filstruktur
 
