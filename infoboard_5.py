@@ -55,22 +55,16 @@ API_TIMEOUT = 10
 
 # === Charlottenlund vgs Visual Profile ===
 BG_COLOR = '#3C1053'
-BG_SECONDARY = '#4A1366'
+BG_PANEL = '#5C2279'  # Semi-transparent purple over pattern
 HEADING_COLOR = '#FFD244'
 ACCENT_COLOR = '#00816D'
-ACCENT_DARK = '#006C5B'
 TEXT_COLOR = '#FFFFFF'
 SUBTEXT_COLOR = '#B89CC8'
 ALERT_COLOR = '#EA560D'
 IM_TEAL = '#38aba3'
-DISCORD_BG = '#5865F2'  # Discord blurple for icons
+DISCORD_BG = '#5865F2'
 
 # === Fonts ===
-# Primary: Widescreen XBold (headings/bold) / Light (body)
-# Fallback: Arial (installed everywhere)
-# To install Widescreen: place .ttf files in script dir or system fonts folder,
-# then restart the app.
-
 FONTS_BOLD = ['Widescreen XBold', 'Widescreen Mixed XBold', 'Widescreen Ex XBold', 'Widescreen']
 FONTS_LIGHT = ['Widescreen Light', 'Widescreen Mixed Light', 'Widescreen Ex Light', 'Widescreen']
 
@@ -98,6 +92,7 @@ def resolve_font(size, weight='normal'):
 # Font constants — set after root = tk.Tk() in init_fonts()
 FONT_TITLE = None
 FONT_SUBHEADING = None
+FONT_SUBHEADING_SM = None
 FONT_BODY = None
 FONT_BODY_BOLD = None
 FONT_BODY_SMALL = None
@@ -113,33 +108,56 @@ FONT_DISCORD_TIME = None
 FONT_BIRTHDAY_NAME = None
 FONT_BIRTHDAY_DATE = None
 
+# Logo image reference
+_logo_photo = None
+
 
 def init_fonts():
     """Initialize all font constants. Must be called after tk.Tk()."""
-    global FONT_TITLE, FONT_SUBHEADING, FONT_BODY, FONT_BODY_BOLD
+    global FONT_TITLE, FONT_SUBHEADING, FONT_SUBHEADING_SM, FONT_BODY, FONT_BODY_BOLD
     global FONT_BODY_SMALL, FONT_TABLE_HEADER, FONT_CLOCK
     global FONT_LINE_BADGE, FONT_TIME, FONT_STATUS, FONT_IM_BADGE
     global FONT_DISCORD_MSG, FONT_DISCORD_AUTHOR, FONT_DISCORD_TIME
     global FONT_BIRTHDAY_NAME, FONT_BIRTHDAY_DATE
-    FONT_TITLE = resolve_font(40, 'xbold')         # h1
-    FONT_SUBHEADING = resolve_font(28, 'xbold')     # h2
-    FONT_BODY = resolve_font(17, 'normal')           # body
-    FONT_BODY_BOLD = resolve_font(17, 'xbold')       # body bold
-    FONT_BODY_SMALL = resolve_font(14, 'normal')      # small (orden cells)
-    FONT_TABLE_HEADER = resolve_font(14, 'xbold')     # table headers
-    FONT_CLOCK = resolve_font(36, 'normal')           # clock
-    FONT_LINE_BADGE = resolve_font(17, 'xbold')       # line badge
-    FONT_TIME = resolve_font(17, 'xbold')             # departure time
-    FONT_STATUS = resolve_font(14, 'normal')           # status
-    FONT_IM_BADGE = resolve_font(40, 'xbold')         # IM badge
-    FONT_DISCORD_MSG = resolve_font(14, 'normal')     # Discord content
-    FONT_DISCORD_AUTHOR = resolve_font(14, 'xbold')   # Discord author
-    FONT_DISCORD_TIME = resolve_font(12, 'normal')     # Discord time
-    FONT_BIRTHDAY_NAME = resolve_font(17, 'xbold')     # Birthday name
-    FONT_BIRTHDAY_DATE = resolve_font(14, 'normal')     # Birthday date
+    global _logo_photo
+    FONT_TITLE = resolve_font(40, 'xbold')
+    FONT_SUBHEADING = resolve_font(28, 'xbold')
+    FONT_SUBHEADING_SM = resolve_font(20, 'xbold')
+    FONT_BODY = resolve_font(17, 'normal')
+    FONT_BODY_BOLD = resolve_font(17, 'xbold')
+    FONT_BODY_SMALL = resolve_font(14, 'normal')
+    FONT_TABLE_HEADER = resolve_font(14, 'xbold')
+    FONT_CLOCK = resolve_font(36, 'normal')
+    FONT_LINE_BADGE = resolve_font(14, 'xbold')
+    FONT_TIME = resolve_font(14, 'xbold')
+    FONT_STATUS = resolve_font(14, 'normal')
+    FONT_IM_BADGE = resolve_font(40, 'xbold')
+    FONT_DISCORD_MSG = resolve_font(17, 'normal')
+    FONT_DISCORD_AUTHOR = resolve_font(17, 'xbold')
+    FONT_DISCORD_TIME = resolve_font(14, 'normal')
+    FONT_BIRTHDAY_NAME = resolve_font(14, 'xbold')
+    FONT_BIRTHDAY_DATE = resolve_font(13, 'normal')
+
+    # Load IM logo — keep aspect ratio, make white bg transparent
+    logo_path = os.path.join(SCRIPT_DIR, 'im_logo_bio.png')
+    if os.path.exists(logo_path):
+        try:
+            img = Image.open(logo_path).convert('RGBA')
+            # Remove white/near-white background
+            data = list(img.getdata())
+            img.putdata([(0, 0, 0, 0) if (r > 230 and g > 230 and b > 230) else (r, g, b, a)
+                         for r, g, b, a in data])
+            # Resize preserving aspect ratio (703x446 → height=50)
+            aspect = img.width / img.height
+            h = 50
+            w = int(h * aspect)
+            img = img.resize((w, h), Image.LANCZOS)
+            _logo_photo = ImageTk.PhotoImage(img)
+        except Exception as e:
+            log(f"Logo load failed ({e})")
 
 # === Border Radius ===
-CORNER_RADIUS = 8
+CORNER_RADIUS = 10
 
 
 def rounded_rect(canvas, x1, y1, x2, y2, r=CORNER_RADIUS, **kwargs):
@@ -160,32 +178,27 @@ def rounded_rect(canvas, x1, y1, x2, y2, r=CORNER_RADIUS, **kwargs):
 
 
 class RoundedFrame(tk.Frame):
-    """Frame with rounded corners rendered via Canvas background."""
-    def __init__(self, parent, bg=BG_SECONDARY, radius=CORNER_RADIUS, **kwargs):
-        super().__init__(parent, bg=bg, highlightthickness=0, **kwargs)
+    """Frame with rounded corners. Canvas draws bg, inner Frame is a window item with padding."""
+    def __init__(self, parent, bg=BG_PANEL, radius=CORNER_RADIUS, **kwargs):
+        super().__init__(parent, bg=BG_COLOR, highlightthickness=0, **kwargs)
         self._radius = radius
         self._bg = bg
-        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, height=0)
+        self.canvas = tk.Canvas(self, bg=BG_COLOR, highlightthickness=0)
         self.canvas.pack(fill='both', expand=True)
+        # Inner frame placed as canvas window — will be created by caller
+        self.inner = tk.Frame(self.canvas, bg=bg, highlightthickness=0)
+        self.canvas.create_window(0, 0, window=self.inner, anchor='nw', tags='inner')
+        rounded_rect(self.canvas, 0, 0, 1, 1, radius, fill=bg, outline='', tags='rounded_bg')
         self.bind('<Configure>', self._on_resize)
 
     def _on_resize(self, event):
-        self.canvas.delete('rounded_bg')
         w, h = event.width, event.height
         r = self._radius
-        self.canvas.create_rectangle(
-            r, 0, w - r, h,
-            fill=self._bg, outline='', tags='rounded_bg'
-        )
-        self.canvas.create_rectangle(
-            0, r, w, h - r,
-            fill=self._bg, outline='', tags='rounded_bg'
-        )
-        for (cx, cy) in [(r, r), (w - r, r), (r, h - r), (w - r, h - r)]:
-            self.canvas.create_oval(
-                cx - r, cy - r, cx + r, cy + r,
-                fill=self._bg, outline='', tags='rounded_bg'
-            )
+        p = r  # padding = corner radius so content doesn't overlap rounded corners
+        self.canvas.delete('rounded_bg')
+        rounded_rect(self.canvas, 0, 0, w, h, r, fill=self._bg, outline='', tags='rounded_bg')
+        self.canvas.coords('inner', p, p)
+        self.canvas.itemconfig('inner', width=w - 2 * p, height=h - 2 * p)
         self.canvas.tag_lower('rounded_bg')
 
 
@@ -234,17 +247,13 @@ def fetch_discord_messages():
             author = m.get("author", {}).get("global_name") or m.get("author", {}).get("username", "?")
             content = m.get("content", "").strip()
             timestamp = m.get("timestamp", "")
-            # Skip empty messages (embeds/attachments only)
             if not content:
                 continue
-            # Strip Discord markdown: bold, italic, code
             content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
             content = re.sub(r'\*(.+?)\*', r'\1', content)
             content = re.sub(r'`(.+?)`', r'\1', content)
-            # Truncate long messages
             if len(content) > 120:
                 content = content[:117] + "..."
-            # Parse timestamp
             try:
                 dt = datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(LOCAL_TZ)
                 time_str = dt.strftime("%H:%M")
@@ -338,7 +347,6 @@ def create_pattern_bg(width, height):
         except Exception as e:
             log(f"Pattern load failed ({e}), generating fallback")
 
-    # Fallback: procedural diamond pattern
     bg = Image.new('RGBA', (width, height), BG_COLOR)
     draw = ImageDraw.Draw(bg, 'RGBA')
     spacing = 120
@@ -355,47 +363,49 @@ def create_pattern_bg(width, height):
 
 class DepartureBoard:
     def __init__(self, parent):
-        self.frame = tk.Frame(parent, bg=BG_COLOR)
+        self.container = RoundedFrame(parent, bg=BG_PANEL)
+        self.frame = self.container.inner
+        self.frame.configure(padx=10, pady=8)
 
-        hdr = tk.Frame(self.frame, bg=BG_SECONDARY, padx=16, pady=10)
-        hdr.pack(fill='x')
-        tk.Label(hdr, text="LINJE", font=FONT_TABLE_HEADER,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR).pack(side='left', padx=(0, 15))
-        tk.Label(hdr, text="RETNING", font=FONT_TABLE_HEADER,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR).pack(side='left')
-        tk.Label(hdr, text="AVGANG", font=FONT_TABLE_HEADER,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR).pack(side='right')
+        hdr = tk.Frame(self.frame, bg=BG_PANEL)
+        hdr.pack(fill='x', pady=(0, 6))
+        tk.Label(hdr, text="LINJE", font=FONT_SUBHEADING,
+                 bg=BG_PANEL, fg=HEADING_COLOR, width=6, anchor='w').pack(side='left')
+        tk.Label(hdr, text="RETNING", font=FONT_SUBHEADING,
+                 bg=BG_PANEL, fg=HEADING_COLOR, anchor='w').pack(side='left', fill='x', expand=True)
+        tk.Label(hdr, text="AVGANG", font=FONT_SUBHEADING,
+                 bg=BG_PANEL, fg=HEADING_COLOR, width=8, anchor='w').pack(side='left')
 
-        self.rows_frame = tk.Frame(self.frame, bg=BG_COLOR)
-        self.rows_frame.pack(fill='both', expand=True, pady=(10, 0))
+        self.rows_frame = tk.Frame(self.frame, bg=BG_PANEL)
+        self.rows_frame.pack(fill='both', expand=True)
 
         self.dest_headers = []
         self.dep_rows = []
 
         for _ in range(8):
             hdr_lbl = tk.Label(self.rows_frame, text="", font=FONT_SUBHEADING,
-                               bg=BG_COLOR, fg=ACCENT_COLOR, anchor='w')
+                               bg=BG_PANEL, fg=ACCENT_COLOR, anchor='w')
             self.dest_headers.append(hdr_lbl)
             group = []
             for _ in range(MAX_PER_DEST):
-                row_frame = tk.Frame(self.rows_frame, bg=BG_COLOR)
+                row_frame = tk.Frame(self.rows_frame, bg=BG_PANEL)
                 line_lbl = tk.Label(row_frame, text="", font=FONT_LINE_BADGE,
-                                    bg=ACCENT_COLOR, fg='#FFFFFF', width=4, anchor='center')
+                                    bg=ACCENT_COLOR, fg='#FFFFFF', width=6, anchor='center')
                 dest_lbl = tk.Label(row_frame, text="", font=FONT_BODY,
-                                    bg=BG_COLOR, fg=TEXT_COLOR, anchor='w')
+                                    bg=BG_PANEL, fg=TEXT_COLOR, anchor='w')
                 time_lbl = tk.Label(row_frame, text="", font=FONT_TIME,
-                                    bg=BG_COLOR, fg=HEADING_COLOR, anchor='e')
-                line_lbl.pack(side='left', padx=(16, 8), ipady=2)
-                dest_lbl.pack(side='left', padx=(8, 0), fill='x', expand=True)
-                time_lbl.pack(side='right', padx=16)
+                                    bg=BG_PANEL, fg=HEADING_COLOR, width=8, anchor='w')
+                line_lbl.pack(side='left', ipady=1)
+                dest_lbl.pack(side='left', fill='x', expand=True)
+                time_lbl.pack(side='left')
                 group.append((row_frame, line_lbl, dest_lbl, time_lbl))
             self.dep_rows.append(group)
 
         self.no_data_label = tk.Label(self.rows_frame, text="", font=FONT_BODY,
-                                       bg=BG_COLOR, fg=SUBTEXT_COLOR)
+                                       bg=BG_PANEL, fg=SUBTEXT_COLOR)
 
     def pack(self, **kwargs):
-        self.frame.pack(**kwargs)
+        self.container.pack(**kwargs)
 
     def update_display(self):
         with departures_lock:
@@ -425,7 +435,7 @@ class DepartureBoard:
 
             group.sort(key=lambda x: x["time"])
             self.dest_headers[row_idx].config(text=f"→ {dest.upper()}")
-            self.dest_headers[row_idx].pack(fill='x', pady=(12, 4))
+            self.dest_headers[row_idx].pack(fill='x', pady=(6, 2))
 
             for i, dep in enumerate(group[:MAX_PER_DEST]):
                 if i >= len(self.dep_rows[row_idx]):
@@ -437,7 +447,7 @@ class DepartureBoard:
                 line_lbl.config(text=dep['line'])
                 dest_lbl.config(text=dep['destination'])
                 time_lbl.config(text=time_text)
-                row_frame.pack(fill='x', pady=3)
+                row_frame.pack(fill='x', pady=1)
 
             for i in range(min(len(group), MAX_PER_DEST), MAX_PER_DEST):
                 self.dep_rows[row_idx][i][0].pack_forget()
@@ -454,27 +464,28 @@ class DiscordPanel:
     """Panel showing recent messages from 1IM-Fellesinfo Discord channel."""
 
     def __init__(self, parent):
-        self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=20, pady=16)
+        self.container = RoundedFrame(parent, bg=BG_PANEL)
+        self.frame = self.container.inner
+        self.frame.configure(padx=10, pady=8)
 
-        # Header with emoji
-        header_frame = tk.Frame(self.frame, bg=BG_SECONDARY)
-        header_frame.pack(fill='x', pady=(0, 12))
+        header_frame = tk.Frame(self.frame, bg=BG_PANEL)
+        header_frame.pack(fill='x', pady=(0, 8))
         tk.Label(header_frame, text="📢 1IM-FELLESINFO", font=FONT_SUBHEADING,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR, anchor='w').pack(side='left')
+                 bg=BG_PANEL, fg=HEADING_COLOR, anchor='w').pack(side='left')
 
-        self.msg_container = tk.Frame(self.frame, bg=BG_SECONDARY)
+        self.msg_container = tk.Frame(self.frame, bg=BG_PANEL)
         self.msg_container.pack(fill='both', expand=True)
 
         self.msg_labels = []
         for _ in range(CONFIG.get("discord_max_messages", 8)):
-            msg_frame = tk.Frame(self.msg_container, bg=BG_SECONDARY)
+            msg_frame = tk.Frame(self.msg_container, bg=BG_PANEL)
             author_lbl = tk.Label(msg_frame, font=FONT_DISCORD_AUTHOR,
-                                  bg=BG_SECONDARY, fg=IM_TEAL, anchor='w')
+                                  bg=BG_PANEL, fg=IM_TEAL, anchor='w')
             content_lbl = tk.Label(msg_frame, font=FONT_DISCORD_MSG,
-                                  bg=BG_SECONDARY, fg=TEXT_COLOR, anchor='w',
-                                  wraplength=320, justify='left')
+                                  bg=BG_PANEL, fg=TEXT_COLOR, anchor='w',
+                                  wraplength=400, justify='left')
             time_lbl = tk.Label(msg_frame, font=FONT_DISCORD_TIME,
-                                bg=BG_SECONDARY, fg=SUBTEXT_COLOR, anchor='e')
+                                bg=BG_PANEL, fg=SUBTEXT_COLOR, anchor='e')
 
             author_lbl.pack(side='left', padx=(0, 6))
             time_lbl.pack(side='right', padx=(6, 0))
@@ -483,10 +494,10 @@ class DiscordPanel:
             self.msg_labels.append((msg_frame, author_lbl, content_lbl, time_lbl))
 
         self.no_data_label = tk.Label(self.msg_container, text="Ingen meldinger",
-                                       font=FONT_BODY, bg=BG_SECONDARY, fg=SUBTEXT_COLOR)
+                                       font=FONT_BODY, bg=BG_PANEL, fg=SUBTEXT_COLOR)
 
     def pack(self, **kwargs):
-        self.frame.pack(**kwargs)
+        self.container.pack(**kwargs)
 
     def update_display(self):
         with discord_lock:
@@ -496,7 +507,6 @@ class DiscordPanel:
             self.no_data_label.pack(pady=20)
             for msg_frame, _, _, _ in self.msg_labels:
                 msg_frame.pack_forget()
-            # Also show setup hint if no Discord config
             if not CONFIG.get("discord_bot_token") or not CONFIG.get("discord_channel_id"):
                 self.no_data_label.config(
                     text="Sett opp Discord i config.json\n(Se README for instruksjoner)")
@@ -532,7 +542,7 @@ def get_week_birthdays():
         return []
     now = datetime.datetime.now(LOCAL_TZ)
     iso = now.isocalendar()
-    week_start = datetime.datetime.fromisocalendar(iso[0], iso[1], 1, tzinfo=LOCAL_TZ)
+    week_start = datetime.datetime.fromisocalendar(iso[0], iso[1], 1).replace(tzinfo=LOCAL_TZ)
     week_end = week_start + datetime.timedelta(days=6, hours=23, minutes=59, seconds=59)
     result = []
     for name, date_str in all_bdays.items():
@@ -552,22 +562,24 @@ class BirthdayPanel:
     """Panel showing weekly birthdays (Ukens bursdagsbarn)."""
 
     def __init__(self, parent):
-        self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=20, pady=16)
+        self.container = RoundedFrame(parent, bg=BG_PANEL)
+        self.frame = self.container.inner
+        self.frame.configure(padx=10, pady=8)
 
-        tk.Label(self.frame, text="UKENS BURSDAGSBARN", font=FONT_SUBHEADING,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR, anchor='w').pack(fill='x', pady=(0, 12))
+        tk.Label(self.frame, text="UKENS BURSDAGSBARN", font=FONT_SUBHEADING_SM,
+                 bg=BG_PANEL, fg=HEADING_COLOR, anchor='w').pack(fill='x', pady=(0, 6))
 
         self.bday_labels = []
         for _ in range(5):
-            row = tk.Frame(self.frame, bg=BG_SECONDARY)
+            row = tk.Frame(self.frame, bg=BG_PANEL)
             name_lbl = tk.Label(row, font=FONT_BIRTHDAY_NAME,
-                                bg=BG_SECONDARY, fg=TEXT_COLOR, anchor='w')
+                                bg=BG_PANEL, fg=TEXT_COLOR, anchor='w')
             dash_lbl = tk.Label(row, font=FONT_BODY_SMALL,
-                                bg=BG_SECONDARY, fg=SUBTEXT_COLOR, text=" – ")
+                                bg=BG_PANEL, fg=SUBTEXT_COLOR, text=" – ")
             day_lbl = tk.Label(row, font=FONT_BIRTHDAY_DATE,
-                               bg=BG_SECONDARY, fg=IM_TEAL, anchor='w')
+                               bg=BG_PANEL, fg=IM_TEAL, anchor='w')
             date_lbl = tk.Label(row, font=FONT_BIRTHDAY_DATE,
-                                bg=BG_SECONDARY, fg=SUBTEXT_COLOR, anchor='e')
+                                bg=BG_PANEL, fg=SUBTEXT_COLOR, anchor='e')
             name_lbl.pack(side='left')
             dash_lbl.pack(side='left')
             day_lbl.pack(side='left', padx=(0, 8))
@@ -575,10 +587,10 @@ class BirthdayPanel:
             self.bday_labels.append((row, name_lbl, day_lbl, date_lbl))
 
         self.no_data_label = tk.Label(self.frame, text="Ingen bursdager denne uken",
-                                       font=FONT_BODY, bg=BG_SECONDARY, fg=SUBTEXT_COLOR)
+                                       font=FONT_BODY, bg=BG_PANEL, fg=SUBTEXT_COLOR)
 
     def pack(self, **kwargs):
-        self.frame.pack(**kwargs)
+        self.container.pack(**kwargs)
 
     def update_display(self):
         bdays = get_week_birthdays()
@@ -595,37 +607,39 @@ class BirthdayPanel:
                 name_lbl.config(text=b["name"])
                 day_lbl.config(text=b["day"])
                 date_lbl.config(text=b["date"])
-                row.pack(fill='x', pady=3)
+                row.pack(fill='x', pady=1)
             else:
                 row.pack_forget()
 
 
 class OrdenTable:
     def __init__(self, parent):
-        self.frame = tk.Frame(parent, bg=BG_SECONDARY, padx=20, pady=16)
+        self.container = RoundedFrame(parent, bg=BG_PANEL)
+        self.frame = self.container.inner
+        self.frame.configure(padx=10, pady=8)
 
         tk.Label(self.frame, text="ORDENSVAKT", font=FONT_SUBHEADING,
-                 bg=BG_SECONDARY, fg=HEADING_COLOR).grid(
-                     row=0, column=0, columnspan=6, sticky='w', pady=(0, 12))
+                 bg=BG_PANEL, fg=HEADING_COLOR).grid(
+                     row=0, column=0, columnspan=6, sticky='w', pady=(0, 8))
 
         headers = ['UKE', 'DATO', '1IM1', '1IM2', 'STOL', 'VASK']
         for col, header in enumerate(headers):
             tk.Label(self.frame, text=header, font=FONT_TABLE_HEADER,
-                     bg=BG_SECONDARY, fg=HEADING_COLOR).grid(
-                         row=1, column=col, padx=8, pady=(0, 6), sticky='w')
+                     bg=BG_PANEL, fg=HEADING_COLOR).grid(
+                         row=1, column=col, padx=8, pady=(0, 4), sticky='w')
 
         self.cells = []
         for row in range(2, 28):
             row_cells = []
             for col in range(6):
                 lbl = tk.Label(self.frame, text="", font=FONT_BODY_SMALL,
-                               bg=BG_SECONDARY, fg=TEXT_COLOR)
+                               bg=BG_PANEL, fg=TEXT_COLOR)
                 lbl.grid(row=row, column=col, padx=8, pady=2, sticky='w')
                 row_cells.append(lbl)
             self.cells.append(row_cells)
 
     def pack(self, **kwargs):
-        self.frame.pack(**kwargs)
+        self.container.pack(**kwargs)
 
     def update_display(self):
         orden_data = fetch_orden()
@@ -636,12 +650,11 @@ class OrdenTable:
             if row_idx >= len(self.cells):
                 break
             week_num = int(uke[3:])
-            if week_num == current_week:
-                color = HEADING_COLOR
+            if week_num < current_week:
+                continue
+            elif week_num == current_week:
+                color = IM_TEAL
                 font_style = FONT_BODY_BOLD
-            elif week_num < current_week:
-                color = SUBTEXT_COLOR
-                font_style = ('Arial', 14, 'overstrike')
             else:
                 color = TEXT_COLOR
                 font_style = FONT_BODY_SMALL
@@ -651,6 +664,11 @@ class OrdenTable:
             for col, val in enumerate(data):
                 self.cells[row_idx][col].config(text=val, fg=color, font=font_style)
             row_idx += 1
+
+        # Hide unused rows
+        for idx in range(row_idx, len(self.cells)):
+            for col in range(6):
+                self.cells[idx][col].config(text="")
 
 
 # === GUI Setup ===
@@ -675,10 +693,14 @@ except Exception as e:
 title_frame = tk.Frame(root, bg=BG_COLOR)
 title_frame.pack(fill='x', pady=(20, 10), padx=40)
 
-im_badge = tk.Frame(title_frame, bg=IM_TEAL, padx=14, pady=4)
-im_badge.pack(side='left', padx=(0, 16))
-tk.Label(im_badge, text="IM", font=FONT_IM_BADGE,
-         bg=IM_TEAL, fg='#FFFFFF').pack()
+if _logo_photo:
+    im_badge = tk.Label(title_frame, image=_logo_photo, bg=BG_COLOR)
+    im_badge.pack(side='left', padx=(0, 16))
+else:
+    im_badge = tk.Frame(title_frame, bg=IM_TEAL, padx=14, pady=4)
+    im_badge.pack(side='left', padx=(0, 16))
+    tk.Label(im_badge, text="IM", font=FONT_IM_BADGE,
+             bg=IM_TEAL, fg='#FFFFFF').pack()
 
 tk.Label(title_frame, text="BUSSAVGANGER — CHARLOTTENLUND VGS",
          font=FONT_TITLE, bg=BG_COLOR, fg=HEADING_COLOR).pack(side='left')
@@ -695,23 +717,23 @@ status_label.pack(side='right', padx=(0, 20))
 sep = tk.Frame(root, bg=ACCENT_COLOR, height=2)
 sep.pack(fill='x', padx=40, pady=(0, 10))
 
-# === Main content — 3 columns: Buss | Right stack (Discord + Bursdag) | Orden ===
+# === Main content — 3 columns: Buss+Bursdag | Discord | Orden ===
 main_container = tk.Frame(root, bg=BG_COLOR)
 main_container.pack(expand=True, fill='both', padx=40, pady=(0, 20))
 
-# Column 1: Bussavganger (left, expanding)
-board = DepartureBoard(main_container)
-board.pack(side='left', fill='both', expand=True, padx=(0, 12))
+# Column 1: Bussavganger + Bursdag (left, expanding)
+left_stack = tk.Frame(main_container, bg=BG_COLOR)
+left_stack.pack(side='left', fill='both', expand=True, padx=(0, 12))
 
-# Column 2: Right-side stack (Discord on top, Bursdag below)
-right_stack = tk.Frame(main_container, bg=BG_COLOR)
-right_stack.pack(side='left', fill='both', expand=False, padx=(0, 12))
+board = DepartureBoard(left_stack)
+board.pack(fill='both', expand=True, pady=(0, 10))
 
-discord = DiscordPanel(right_stack)
-discord.pack(fill='both', expand=True, pady=(0, 10))
-
-birthday = BirthdayPanel(right_stack)
+birthday = BirthdayPanel(left_stack)
 birthday.pack(fill='x')
+
+# Column 2: Discord (middle)
+discord = DiscordPanel(main_container)
+discord.pack(side='left', fill='both', expand=False, padx=(0, 12))
 
 # Column 3: Ordensvakt (far right, fixed width)
 orden = OrdenTable(main_container)
@@ -750,8 +772,7 @@ def update_discord():
 
 def update_birthday():
     birthday.update_display()
-    root.after(60 * 60 * 1000, update_birthday)  # Refresh hourly
-
+    root.after(60 * 60 * 1000, update_birthday)
 
 fetch_thread = threading.Thread(target=fetch_loop, daemon=True)
 fetch_thread.start()
