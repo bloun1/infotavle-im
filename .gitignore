@@ -2,3 +2,4 @@ config.json
 infoboard.log
 __pycache__/
 *.pyc
+bg_pattern_*x*.png
