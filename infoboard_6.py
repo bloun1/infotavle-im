@@ -141,47 +141,23 @@ def fetch_orden():
 
 
 def get_week_birthdays():
-    """R4+R7: Load birthdays from Bursdag.xlsx. Show next 3-4 upcoming by next-occurrence date."""
+    """Load birthdays from bursdager.json. Show next 3-4 upcoming by next-occurrence date."""
     try:
-        import openpyxl
-        wb = openpyxl.load_workbook(os.path.join(SCRIPT_DIR, 'Bursdag.xlsx'))
-        ws = wb.active
+        with open(os.path.join(SCRIPT_DIR, 'bursdager.json'), 'r', encoding='utf-8') as f:
+            data = json.load(f)
     except Exception:
         return []
-
-    # Introspect header row to find name and date columns
-    name_col = None
-    date_col = None
-    for row in ws.iter_rows(min_row=1, max_row=1, values_only=False):
-        for cell in row:
-            if cell.value and isinstance(cell.value, str):
-                lower = cell.value.strip().lower()
-                if name_col is None and lower in ('navn', 'name', 'bursdag', 'navn/'):
-                    name_col = cell.column
-                elif date_col is None and lower in ('dato', 'date', 'dato/'):
-                    date_col = cell.column
-    if name_col is None:
-        name_col = 1
-    if date_col is None:
-        date_col = 2
 
     now = datetime.datetime.now(LOCAL_TZ)
     today = now.date()
 
     birthdays = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        name = row[name_col - 1] if name_col - 1 < len(row) else None
-        date_val = row[date_col - 1] if date_col - 1 < len(row) else None
-        if not name or not date_val:
-            continue
+    for name, date_str in data.items():
         name = str(name).strip()
-        if isinstance(date_val, datetime.datetime):
-            bday = date_val
-        else:
-            try:
-                bday = datetime.datetime.strptime(str(date_val), '%Y-%m-%d')
-            except (ValueError, TypeError):
-                continue
+        try:
+            bday = datetime.datetime.strptime(str(date_str), '%Y-%m-%d')
+        except (ValueError, TypeError):
+            continue
 
         # R7: compute next occurrence
         month, day = bday.month, bday.day
@@ -202,7 +178,7 @@ def get_week_birthdays():
 
         day_names = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag', 'søndag']
         day_name = day_names[next_date.weekday()].capitalize()
-        date_str = next_date.strftime('%d.%m')
+        date_str_fmt = next_date.strftime('%d.%m')
 
         # R9: build countdown suffix
         if days_until == 0:
@@ -215,7 +191,7 @@ def get_week_birthdays():
         birthdays.append({
             'navn': name,
             'dag': day_name,
-            'dato': date_str,
+            'dato': date_str_fmt,
             'days_until': days_until,
             'countdown': countdown,
             'is_today': days_until == 0,
@@ -245,35 +221,7 @@ def fetch_discord():
                 discord_status = "not_configured"
             return []
 
-        # R15: one-time connectivity checks
-        me_resp = requests.get("https://discord.com/api/v10/users/@me",
-                               headers={"Authorization": f"Bot {token}"}, timeout=6)
-        if me_resp.status_code != 200:
-            err = f"{me_resp.status_code}"
-            try:
-                j = me_resp.json()
-                err = f"{me_resp.status_code} {j.get('message', '')} ({j.get('code', '')})"
-            except Exception:
-                pass
-            with discord_status_lock:
-                discord_status = f"Bot-token feil — {err}"
-            log(f"Discord bot check failed: {err}")
-            return []
-
-        ch_resp = requests.get(f"https://discord.com/api/v10/channels/{channel_id}",
-                                headers={"Authorization": f"Bot {token}"}, timeout=6)
-        if ch_resp.status_code != 200:
-            err = f"{ch_resp.status_code}"
-            try:
-                j = ch_resp.json()
-                err = f"{ch_resp.status_code} {j.get('message', '')} ({j.get('code', '')})"
-            except Exception:
-                pass
-            with discord_status_lock:
-                discord_status = f"Kanal feil — {err}"
-            log(f"Discord channel check failed: {err}")
-            return []
-
+        # R15: fetch messages directly, surface errors
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit={max_msgs}"
         headers = {"Authorization": f"Bot {token}"}
         resp = requests.get(url, headers=headers, timeout=6)
@@ -286,6 +234,7 @@ def fetch_discord():
                 pass
             with discord_status_lock:
                 discord_status = f"Discord feil — {err}"
+            log(f"Discord fetch failed: {err}")
             return []
 
         messages_raw = resp.json()
@@ -666,7 +615,7 @@ class DiscordPanel:
             for card, _, _, _ in self.msg_widgets:
                 card.pack_forget()
             return
-        elif status.startswith("Bot-token") or status.startswith("Kanal") or status.startswith("Discord feil"):
+        elif status.startswith("Discord feil") or status.startswith("Frakoblet"):
             self.no_data_label.config(text=f"Discord frakoblet — {status}",
                                        fg='#EA560D')
             self.no_data_label.pack(pady=px(10))
