@@ -1,0 +1,4 @@
+config.json
+infoboard.log
+__pycache__/
+*.pyc
