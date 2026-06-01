@@ -9,7 +9,7 @@ import requests
 from felles import (
     LOCAL_TZ, SCRIPT_DIR, log,
     PAGE_BG, HEADING_YELLOW, WHITE, TEAL,
-    PAGE_SURFACE, px, font, rounded_image,
+    px, font, rounded_image,
 )
 
 # === Constants ===
@@ -18,7 +18,6 @@ GRAPHQL_HEADERS = {
     'ET-Client-Name': 'Charlottenlund vgs IM',
     'Content-Type': 'application/json',
 }
-STOP_PLACE_ID = "NSR:StopPlace:43916"  # R13: parent stop (both directions)
 GRAPHQL_QUERY = """
 {
   stopPlace(id: "NSR:StopPlace:43916") {
@@ -143,9 +142,6 @@ class DepartureBoard:
 
         self.no_data_label = tk.Label(self.grid, text="", font=font(18),
                                        bg=PAGE_BG, fg=WHITE)
-
-    def pack(self, **kwargs):
-        self.frame.pack(**kwargs)
 
     def place(self, **kwargs):
         self.frame.place(**kwargs)

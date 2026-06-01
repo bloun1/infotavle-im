@@ -2,7 +2,6 @@
 
 import os
 import datetime
-import threading
 import tkinter as tk
 from datetime import timezone, timedelta
 from PIL import Image, ImageDraw, ImageTk
@@ -35,7 +34,7 @@ BIRTHDAY_TODAY = '#C62828'
 
 
 class Surface:
-    """Per-surface palette: background, heading, body, subtext, accent."""
+    """Per-surface palette: background, heading, accent, radius."""
     def __init__(self, bg, heading, body, subtext, accent, rounded=True, radius_px=12):
         self.bg = bg
         self.heading = heading
