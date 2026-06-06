@@ -1,5 +1,6 @@
 """Infotavle-IM main entry point — starts all panels in sequence on Raspberry Pi."""
-
+import sys
+print(sys.executable)
 import os
 import threading
 import datetime
@@ -16,6 +17,7 @@ from buss import DepartureBoard, parse_departures, fetch_loop, is_online, last_u
 from ordens import OrdenTable, REFRESH_ORDEN_MIN
 from bursdag import BirthdayPanel
 from discord import DiscordPanel, fetch_discord
+from weather import WeatherPanel, fetch_weather_loop
 
 
 # === GUI Setup ===
@@ -126,6 +128,9 @@ board.place(relx=0.018, rely=0.139, relwidth=0.296, relheight=0.565)
 bursdag = BirthdayPanel(root, YELLOW_SURFACE)
 bursdag.place(relx=0.027, rely=0.720, relwidth=0.299, relheight=0.182)
 
+weather = WeatherPanel(root, YELLOW_SURFACE)
+weather.place(relx=0.027, rely=0.910, relwidth=0.299, relheight=0.075)
+
 discord = DiscordPanel(root, YELLOW_SURFACE)
 discord.place(relx=0.348, rely=0.124, relwidth=0.299, relheight=0.779)
 
@@ -166,9 +171,11 @@ def update_discord():
     root.after(REFRESH_API_SEC * 1000, update_discord)
 
 
-# Start background fetch thread
+# Start background fetch threads
 fetch_thread = threading.Thread(target=fetch_loop, daemon=True)
 fetch_thread.start()
+weather_thread = threading.Thread(target=fetch_weather_loop, daemon=True)
+weather_thread.start()
 
 # Start update loops
 update_time()
@@ -176,5 +183,11 @@ update_departures()
 update_orden()
 update_bursdager()
 update_discord()
+update_weather()
+
+
+def update_weather():
+    weather.update_display()
+    root.after(300000, update_weather)  # 5 min
 
 root.mainloop()
