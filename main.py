@@ -171,6 +171,11 @@ def update_discord():
     root.after(REFRESH_API_SEC * 1000, update_discord)
 
 
+def update_weather():
+    weather.update_display()
+    root.after(300000, update_weather)  # 5 min
+
+
 # Start background fetch threads
 fetch_thread = threading.Thread(target=fetch_loop, daemon=True)
 fetch_thread.start()
@@ -184,10 +189,5 @@ update_orden()
 update_bursdager()
 update_discord()
 update_weather()
-
-
-def update_weather():
-    weather.update_display()
-    root.after(300000, update_weather)  # 5 min
 
 root.mainloop()
