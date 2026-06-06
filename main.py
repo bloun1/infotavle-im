@@ -123,13 +123,13 @@ header_frame.place(relx=0.022, rely=0.026, relwidth=0.909, relheight=0.065)
 
 # === Main panels ===
 board = DepartureBoard(root, PAGE_SURFACE)
-board.place(relx=0.018, rely=0.139, relwidth=0.296, relheight=0.565)
+board.place(relx=0.018, rely=0.139, relwidth=0.296, relheight=0.470)
 
 bursdag = BirthdayPanel(root, YELLOW_SURFACE)
-bursdag.place(relx=0.027, rely=0.720, relwidth=0.299, relheight=0.182)
+bursdag.place(relx=0.027, rely=0.620, relwidth=0.299, relheight=0.175)
 
 weather = WeatherPanel(root, YELLOW_SURFACE)
-weather.place(relx=0.027, rely=0.910, relwidth=0.299, relheight=0.075)
+weather.place(relx=0.027, rely=0.805, relwidth=0.299, relheight=0.185)
 
 discord = DiscordPanel(root, YELLOW_SURFACE)
 discord.place(relx=0.348, rely=0.124, relwidth=0.299, relheight=0.779)
