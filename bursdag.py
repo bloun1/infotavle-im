@@ -69,7 +69,7 @@ def get_week_birthdays():
         })
 
     birthdays.sort(key=lambda b: b['days_until'])
-    return birthdays[:4]
+    return birthdays[:3]
 
 
 class BirthdayPanel:

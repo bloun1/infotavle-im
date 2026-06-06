@@ -1,5 +1,5 @@
 """Bus departure board — Entur GraphQL fetcher and display widget."""
-
+import tkinter as tk
 import datetime
 import threading
 from collections import defaultdict
