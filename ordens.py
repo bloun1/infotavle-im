@@ -30,20 +30,18 @@ class OrdenTable:
 
         # Title — centered
         tk.Label(self.rf.inner, text="ORDENSELEV", font=font(24, 'xBold'),
-                 bg=surface.bg, fg=surface.heading).pack(pady=(px(6), px(4)))
+                 bg=surface.bg, fg=surface.heading).pack(pady=(px(4), px(2)))
 
-        # Centering frame for the table
         self.center_frame = tk.Frame(self.rf.inner, bg=surface.bg)
-        self.center_frame.pack(fill='both', expand=True, padx=px(6))
+        self.center_frame.pack(fill='both', expand=True, padx=px(4))
 
-        # Grid container — R3: centered within center_frame
         self.grid_frame = tk.Frame(self.center_frame, bg=surface.bg)
         self.grid_frame.pack(anchor='center')
 
         headers = ['UKE', 'DATO', '1IM1', '1IM2', 'VASK']
         for col, header in enumerate(headers):
             tk.Label(self.grid_frame, text=header, font=font(14, 'xBold'),
-                     bg=surface.bg, fg=WHITE).grid(row=0, column=col, padx=px(4), pady=px(4), sticky='w')
+                     bg=surface.bg, fg=WHITE).grid(row=0, column=col, padx=px(3), pady=px(2), sticky='w')
 
         self.cells = []
         for row in range(1, 27):
@@ -51,7 +49,7 @@ class OrdenTable:
             for col in range(5):
                 lbl = tk.Label(self.grid_frame, text="", font=font(11),
                                bg=surface.bg, fg=WHITE)
-                lbl.grid(row=row, column=col, padx=px(4), pady=px(2), sticky='w')
+                lbl.grid(row=row, column=col, padx=px(3), pady=px(1), sticky='w')
                 row_cells.append(lbl)
             self.cells.append(row_cells)
 

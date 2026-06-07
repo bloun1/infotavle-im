@@ -123,19 +123,19 @@ header_frame.place(relx=0.022, rely=0.026, relwidth=0.909, relheight=0.065)
 
 # === Main panels ===
 board = DepartureBoard(root, PAGE_SURFACE)
-board.place(relx=0.018, rely=0.139, relwidth=0.296, relheight=0.470)
+board.place(relx=0.028, rely=0.100, relwidth=0.296, relheight=0.500)
 
 bursdag = BirthdayPanel(root, YELLOW_SURFACE)
-bursdag.place(relx=0.027, rely=0.620, relwidth=0.299, relheight=0.175)
+bursdag.place(relx=0.028, rely=0.610, relwidth=0.296, relheight=0.175)
 
 weather = WeatherPanel(root, YELLOW_SURFACE)
-weather.place(relx=0.027, rely=0.805, relwidth=0.299, relheight=0.185)
+weather.place(relx=0.028, rely=0.795, relwidth=0.296, relheight=0.190)
 
 discord = DiscordPanel(root, YELLOW_SURFACE)
-discord.place(relx=0.348, rely=0.124, relwidth=0.299, relheight=0.779)
+discord.place(relx=0.350, rely=0.100, relwidth=0.320, relheight=0.790)
 
 orden = OrdenTable(root, ORDEN_SURFACE)
-orden.place(relx=0.671, rely=0.124, relwidth=0.299, relheight=0.779)
+orden.place(relx=0.695, rely=0.100, relwidth=0.290, relheight=0.790)
 
 root.bind('<Escape>', lambda e: root.destroy())
 

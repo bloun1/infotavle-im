@@ -121,7 +121,7 @@ class DepartureBoard:
 
         # Shared grid for header + all rows
         self.grid = tk.Frame(self.frame, bg=PAGE_BG)
-        self.grid.pack(fill='both', expand=True, padx=px(6), pady=px(6))
+        self.grid.pack(fill='both', expand=True, padx=px(6), pady=(px(4), px(6)))
 
         # Column config: fixed LINJE, expanding RETNING, fixed AVGANG
         self.grid.grid_columnconfigure(0, minsize=px(72), weight=0)
