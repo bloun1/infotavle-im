@@ -1,6 +1,4 @@
 """Infotavle-IM main entry point — starts all panels in sequence on Raspberry Pi."""
-import sys
-print(sys.executable)
 import os
 import threading
 import datetime
@@ -13,7 +11,7 @@ from felles import (
     PAGE_SURFACE, YELLOW_SURFACE, ORDEN_SURFACE,
     px, font, rounded_image, log,
 )
-from buss import DepartureBoard, parse_departures, fetch_loop, is_online, last_update, REFRESH_API_SEC
+from buss import DepartureBoard, fetch_loop, is_online, last_update, REFRESH_API_SEC
 from ordens import OrdenTable, REFRESH_ORDEN_MIN
 from bursdag import BirthdayPanel
 from discord import DiscordPanel, fetch_discord
@@ -51,8 +49,8 @@ def load_bg_pattern():
             try:
                 img.save(cache_path, 'PNG', optimize=True)
                 log(f"Cached bg_pattern to {cache_path}")
-            except Exception:
-                pass
+            except OSError as e:
+                log(f"Cache save failed: {e}")
         bg_pattern_photo = ImageTk.PhotoImage(img)
         return bg_pattern_photo
     except Exception:
@@ -132,10 +130,10 @@ weather = WeatherPanel(root, YELLOW_SURFACE)
 weather.place(relx=0.028, rely=0.795, relwidth=0.296, relheight=0.190)
 
 discord = DiscordPanel(root, YELLOW_SURFACE)
-discord.place(relx=0.350, rely=0.100, relwidth=0.320, relheight=0.790)
+discord.place(relx=0.340, rely=0.100, relwidth=0.330, relheight=0.885)
 
 orden = OrdenTable(root, ORDEN_SURFACE)
-orden.place(relx=0.695, rely=0.100, relwidth=0.290, relheight=0.790)
+orden.place(relx=0.690, rely=0.100, relwidth=0.295, relheight=0.885)
 
 root.bind('<Escape>', lambda e: root.destroy())
 

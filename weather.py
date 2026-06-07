@@ -128,7 +128,7 @@ def get_current_weather():
             t = datetime.datetime.fromisoformat(entry['time']).astimezone(LOCAL_TZ)
             if t <= now:
                 continue
-            if len(forecast_items) >= 4:
+            if len(forecast_items) >= 2:
                 break
             sym = (entry['data'].get('next_1_hours') or entry['data'].get('next_6_hours') or {}).get('summary', {}).get('symbol_code', 'clearsky')
             t_detail = entry['data']['instant']['details']
